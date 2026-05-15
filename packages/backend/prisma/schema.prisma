@@ -1,0 +1,128 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// NOTE: SQLite does not support native enums. Enum values are stored as strings.
+// Validation is enforced at the application/Zod layer.
+// Possible values documented here for reference:
+//   Role:            DESIGNER | SENIOR_DESIGNER | DESIGN_MANAGER | PROJECT_MANAGER | DEPARTMENT_HEAD | ADMIN
+//   Discipline:      MECHANICAL | ELECTRICAL | ELV | FIRE_PROTECTION | PLUMBING
+//   ContractType:    EPC | EPCM
+//   ProjectStatus:   ACTIVE | ON_HOLD | COMPLETED | CANCELLED
+//   DrawingCategory: TENDER | SHOP | CONSTRUCTION | AS_BUILT
+//   DrawingStatus:   IN_PROGRESS | COMPLETED | OVERDUE
+//   LateReason:      CLIENT_SCOPE_CHANGE | CLIENT_DELAY | SITE_CHANGE | VENDOR_DELAY | SICK_LEAVE | AWAITING_OTHER_DISCIPLINE | SOFTWARE_ISSUE | OTHER
+//   AuditAction:     CREATED | EDITED | COMPLETED | COMPLETED_LATE | DELETED | RESTORED | PERMANENTLY_DELETED | LOGIN | LOGOUT
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  passwordHash       String
+  fullName           String
+  initials           String
+  avatarColor        String    @default("info")
+  role               String    @default("DESIGNER")
+  discipline         String?
+  active             Boolean   @default(true)
+  emailDigestEnabled Boolean   @default(true)
+  theme              String    @default("auto")
+  pdfDefault         String    @default("a4-landscape")
+  createdAt          DateTime  @default(now())
+
+  drawingsAsDesigner   Drawing[]     @relation("Designer")
+  drawingsAsRequestor  Drawing[]     @relation("Requestor")
+  drawingsAsProjectMgr Project[]
+  drafts               DrawingDraft[]
+  auditEntries         AuditLog[]
+}
+
+model Project {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  name             String
+  client           String?
+  contractType     String?
+  status           String    @default("ACTIVE")
+  projectManagerId String?
+  projectManager   User?     @relation(fields: [projectManagerId], references: [id])
+  iconEmoji        String    @default("📁")
+  iconColor        String    @default("purple")
+  startDate        DateTime?
+  endDate          DateTime?
+  createdAt        DateTime  @default(now())
+  drawings         Drawing[]
+}
+
+model Drawing {
+  id                   String    @id @default(cuid())
+  drawingNumber        String    @unique
+  drawingTitle         String
+  projectId            String
+  project              Project   @relation(fields: [projectId], references: [id])
+  discipline           String
+  category             String
+
+  designerId           String
+  designer             User      @relation("Designer", fields: [designerId], references: [id])
+  requestorId          String
+  requestor            User      @relation("Requestor", fields: [requestorId], references: [id])
+
+  requestDate          DateTime
+  startDate            DateTime
+  endDate              DateTime
+  actualCompletionDate DateTime?
+
+  lateReason           String?
+  lateReasonDetail     String?
+
+  notes                String?
+  status               String    @default("IN_PROGRESS")
+
+  isDeleted            Boolean   @default(false)
+  deletedAt            DateTime?
+  deletedById          String?
+  deletedReason        String?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  createdById          String
+
+  @@index([projectId, isDeleted])
+  @@index([designerId, status, isDeleted])
+  @@index([status, endDate, isDeleted])
+}
+
+model DrawingDraft {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  formData      String   // JSON stored as string (SQLite doesn't have native JSON)
+  completionPct Int      @default(0)
+  lastSavedAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+
+  @@index([userId, expiresAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  drawingId String?
+  details   String   // JSON stored as string
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([drawingId, createdAt])
+  @@index([userId, createdAt])
+}
