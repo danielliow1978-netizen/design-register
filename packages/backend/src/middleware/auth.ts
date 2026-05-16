@@ -95,7 +95,7 @@ export async function canDeleteDrawing(user: AuthUser, drawingId: string): Promi
     case 'DESIGN_MANAGER': return drawing.discipline === user.discipline
     case 'PROJECT_MANAGER': return drawing.project.projectManagerId === user.id
     case 'DEPARTMENT_HEAD': return true
-    case 'ADMIN': return false
+    case 'ADMIN': return true
     default: return false
   }
 }
