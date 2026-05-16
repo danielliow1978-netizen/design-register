@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: design-register-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd packages/backend && npm install && npx prisma generate && npm run build
+    startCommand: cd packages/backend && node dist/index.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false  # Set manually in Render dashboard (Supabase Postgres URL)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGINS
+        sync: false  # Set to your Vercel frontend URL
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: FRONTEND_URL
+        sync: false  # Set to your Vercel frontend URL
+      - key: PORT
+        value: "3001"
