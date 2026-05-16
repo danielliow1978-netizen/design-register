@@ -82,8 +82,8 @@ router.get('/:id', requireAuth, async (req: Request, res: Response, next: NextFu
   }
 })
 
-// POST /api/projects — manager+
-router.post('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// POST /api/projects — any authenticated user
+router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = createProjectSchema.parse(req.body)
     const project = await prisma.project.create({
