@@ -5,8 +5,8 @@ import { requireAuth, requireMinRole } from '../middleware/auth'
 const router = Router()
 const prisma = new PrismaClient()
 
-// GET /api/audit — manager+ only, read-only
-router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/audit — any authenticated user, read-only
+router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId, action, drawingId, from, to, limit = '100', offset = '0' } = req.query as Record<string, string>
 

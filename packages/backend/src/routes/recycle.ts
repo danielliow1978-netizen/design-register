@@ -17,8 +17,8 @@ const drawingSelect = {
   createdAt: true,
 }
 
-// GET /api/recycle — soft-deleted drawings (manager+)
-router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/recycle — soft-deleted drawings (any authenticated user)
+router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const drawings = await prisma.drawing.findMany({
       where: { isDeleted: true },
