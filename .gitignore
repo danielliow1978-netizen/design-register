@@ -5,3 +5,5 @@ dist/
 .DS_Store
 packages/backend/prisma/dev.db
 packages/backend/prisma/dev.db-journal
+.firebase/
+.supabase-credentials.txt
