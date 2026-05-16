@@ -10,6 +10,8 @@ interface AddUserModalProps {
   open: boolean
   onClose: () => void
   onCreated?: (userId: string) => void
+  /** Compact/requestor mode: only name, initials, role, colour — no email/discipline/password */
+  compact?: boolean
 }
 
 const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER', 'QS_DEPARTMENT', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
@@ -62,7 +64,7 @@ const INITIAL: FormData = {
   password: '',
 }
 
-export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
+export function AddUserModal({ open, onClose, onCreated, compact = false }: AddUserModalProps) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<FormData>(INITIAL)
   const [error, setError] = useState('')
@@ -73,18 +75,25 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
     mutationFn: () =>
       usersApi.create({
         fullName: formData.fullName.trim(),
-        email: formData.email.trim(),
+        ...(compact ? {} : { email: formData.email.trim() }),
         initials: formData.initials.trim().toUpperCase(),
         role: formData.role,
-        discipline: formData.discipline || undefined,
+        ...(compact ? {} : { discipline: formData.discipline || undefined }),
         avatarColor: formData.avatarColor,
-        password: formData.password,
+        ...(compact ? {} : { password: formData.password }),
       }),
     onSuccess: (createdUser) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
       onCreated?.(createdUser.id)
-      setCreatedPassword(formData.password)
-      setError('')
+      if (compact) {
+        // Compact/requestor mode: no password to show, close immediately
+        setFormData(INITIAL)
+        setError('')
+        onClose()
+      } else {
+        setCreatedPassword(formData.password)
+        setError('')
+      }
     },
     onError: (err: unknown) => {
       const apiErr = err as { response?: { data?: { error?: string } } }
@@ -95,9 +104,9 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
   const handleSubmit = () => {
     setError('')
     if (!formData.fullName.trim()) { setError('Full name is required'); return }
-    if (!formData.email.trim()) { setError('Email is required'); return }
+    if (!compact && !formData.email.trim()) { setError('Email is required'); return }
     if (!formData.initials.trim()) { setError('Initials are required'); return }
-    if (!formData.password || formData.password.length < 8) { setError('Password must be at least 8 characters'); return }
+    if (!compact && (!formData.password || formData.password.length < 8)) { setError('Password must be at least 8 characters'); return }
     createMutation.mutate()
   }
 
@@ -106,6 +115,7 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
     setError('')
     setCreatedPassword('')
     setCopied(false)
+    // In compact mode the success screen is skipped, so we just close
     onClose()
   }
 
@@ -172,8 +182,8 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
           👤
         </div>
         <div>
-          <div className="font-medium text-base">Add team member</div>
-          <div className="text-xs text-text-2">Create a new account for your team</div>
+          <div className="font-medium text-base">{compact ? 'Add requestor' : 'Add team member'}</div>
+          <div className="text-xs text-text-2">{compact ? 'Quick-add a requestor by name' : 'Create a new account for your team'}</div>
         </div>
       </ModalHeader>
 
@@ -190,16 +200,18 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
           </div>
         </div>
 
-        <div className="mb-3">
-          <label className={labelClass}>Email *</label>
-          <input
-            type="email"
-            className={inputClass}
-            value={formData.email}
-            onChange={e => update('email', e.target.value)}
-            placeholder="jane.smith@example.com"
-          />
-        </div>
+        {!compact && (
+          <div className="mb-3">
+            <label className={labelClass}>Email *</label>
+            <input
+              type="email"
+              className={inputClass}
+              value={formData.email}
+              onChange={e => update('email', e.target.value)}
+              placeholder="jane.smith@example.com"
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div>
@@ -227,7 +239,7 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
           </div>
         </div>
 
-        <div className="mb-3">
+        {!compact && <div className="mb-3">
           <label className={labelClass}>Discipline</label>
           {(() => {
             const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
@@ -265,7 +277,7 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
               </>
             )
           })()}
-        </div>
+        </div>}
 
         <div className="mb-3">
           <label className={labelClass}>Avatar color</label>
@@ -286,17 +298,19 @@ export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
           </div>
         </div>
 
-        <div className="mb-1">
-          <label className={labelClass}>Temporary password *</label>
-          <input
-            type="text"
-            className={inputClass}
-            value={formData.password}
-            onChange={e => update('password', e.target.value)}
-            placeholder="Min. 8 characters"
-          />
-          <div className="text-[10px] text-text-3 mt-0.5">User should change this after first login</div>
-        </div>
+        {!compact && (
+          <div className="mb-1">
+            <label className={labelClass}>Temporary password *</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={formData.password}
+              onChange={e => update('password', e.target.value)}
+              placeholder="Min. 8 characters"
+            />
+            <div className="text-[10px] text-text-3 mt-0.5">User should change this after first login</div>
+          </div>
+        )}
 
         {error && (
           <div className="mt-3 text-xs text-danger-text bg-danger-bg border border-danger-border rounded-md px-3 py-2">{error}</div>

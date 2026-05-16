@@ -370,8 +370,9 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
         }}
       />
 
-      {/* Inline: Add Requestor */}
+      {/* Inline: Add Requestor (compact — no email/discipline/password) */}
       <AddUserModal
+        compact
         open={showAddRequestor}
         onClose={() => setShowAddRequestor(false)}
         onCreated={(userId) => {

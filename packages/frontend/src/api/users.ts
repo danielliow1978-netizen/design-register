@@ -8,12 +8,12 @@ export const usersApi = {
     apiClient.patch<{ user: Partial<User> }>(`/users/${id}/preferences`, prefs).then(r => r.data.user),
   create: (data: {
     fullName: string
-    email: string
+    email?: string        // optional for requestor-only accounts
     initials: string
     role: Role
     discipline?: string
     avatarColor?: string
-    password: string
+    password?: string    // optional for requestor-only accounts
   }) =>
     apiClient.post<{ user: User }>('/users', data).then(r => r.data.user),
   update: (id: string, data: {

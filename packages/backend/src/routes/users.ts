@@ -19,12 +19,12 @@ const roleEnum = z.enum(['DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEP
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
-  email: z.string().email(),
+  email: z.string().email().optional(),          // optional for requestor-only accounts
   initials: z.string().min(2).max(3).regex(/^[A-Z]+$/, 'Initials must be uppercase letters'),
   role: roleEnum,
   discipline: z.string().optional(),
   avatarColor: z.string().optional(),
-  password: z.string().min(8),
+  password: z.string().min(8).optional(),        // optional for requestor-only accounts
 })
 
 const updateUserSchema = z.object({
@@ -69,18 +69,23 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
   try {
     const data = createUserSchema.parse(req.body)
 
+    // Auto-generate email for requestor-only accounts (no login needed)
+    const email = data.email ?? `${data.initials.toLowerCase()}_${Date.now()}@requestor.local`
+
     // Check email uniqueness
-    const existing = await prisma.user.findUnique({ where: { email: data.email } })
+    const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) {
       return res.status(409).json({ error: 'Email already in use', code: 'EMAIL_TAKEN' })
     }
 
-    const passwordHash = await bcrypt.hash(data.password, 10)
+    // Auto-generate a random password for requestor-only accounts
+    const rawPassword = data.password ?? Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2).toUpperCase() + '!1'
+    const passwordHash = await bcrypt.hash(rawPassword, 10)
 
     const user = await prisma.user.create({
       data: {
         fullName: data.fullName,
-        email: data.email,
+        email,
         initials: data.initials,
         role: data.role,
         discipline: data.discipline ?? null,
