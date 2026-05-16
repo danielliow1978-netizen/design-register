@@ -33,6 +33,6 @@
     "@types/node-cron": "^3.0.11",
     "prisma": "^5.13.0",
     "tsx": "^4.7.3",
-    "typescript": "^5.4.5"
+    "typescript": "5.4.5"
   }
 }
