@@ -19,55 +19,9 @@ import { exportTableToExcel } from '../lib/exportExcel'
 import { exportTableToCsv } from '../lib/exportCsv'
 import { formatSGT } from '../lib/dates'
 import type { Drawing, LateReason } from '../types'
-
-// Stub modals — replaced in Task 12
-function AddDrawingModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45">
-      <div className="bg-surface rounded-lg p-6 max-w-lg w-full mx-4">
-        <div className="font-medium mb-4">Add drawing (coming soon)</div>
-        <Button onClick={onClose}>Close</Button>
-      </div>
-    </div>
-  )
-}
-
-function LateReasonModal({ open, drawing, onSubmit, onClose }: {
-  open: boolean
-  drawing: Drawing | null
-  onSubmit: (reason: LateReason, detail?: string) => void
-  onClose: () => void
-}) {
-  if (!open || !drawing) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45">
-      <div className="bg-surface rounded-lg p-6 max-w-sm w-full mx-4">
-        <div className="font-medium mb-4">Late reason required</div>
-        <Button variant="success" onClick={() => onSubmit('OTHER')}>Submit</Button>
-        <Button onClick={onClose} className="ml-2">Cancel</Button>
-      </div>
-    </div>
-  )
-}
-
-function DeleteConfirmModal({ open, drawing, onConfirm, onClose }: {
-  open: boolean
-  drawing: Drawing | null
-  onConfirm: (password: string, reason: string) => void
-  onClose: () => void
-}) {
-  if (!open || !drawing) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45">
-      <div className="bg-surface rounded-lg p-6 max-w-sm w-full mx-4">
-        <div className="font-medium mb-4">Delete drawing</div>
-        <Button variant="danger" onClick={() => onConfirm('Password123!', 'Test delete')}>Delete</Button>
-        <Button onClick={onClose} className="ml-2">Cancel</Button>
-      </div>
-    </div>
-  )
-}
+import { AddDrawingModal } from '../modals/AddDrawingModal'
+import { LateReasonModal } from '../modals/LateReasonModal'
+import { DeleteConfirmModal } from '../modals/DeleteConfirmModal'
 
 const STATUS_FILTERS = ['ALL', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'] as const
 type StatusFilter = typeof STATUS_FILTERS[number]
@@ -307,7 +261,7 @@ export default function RegisterPage() {
           sortColumns={sortColumns}
           onHeaderClick={handleHeaderClick}
           onComplete={handleComplete}
-          onEdit={d => console.log('edit', d.id)}
+          onEdit={_d => {}}
           onDelete={d => setDeleteDrawing(d)}
           view={view}
           isLoading={drawingsLoading}
