@@ -306,8 +306,9 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
         </Button>
       </ModalFooter>
 
-      {/* Inline: Add Project */}
+      {/* Inline: Add Project (compact — name only) */}
       <AddProjectModal
+        compact
         open={showAddProject}
         onClose={() => setShowAddProject(false)}
         onCreated={(projectId) => {
