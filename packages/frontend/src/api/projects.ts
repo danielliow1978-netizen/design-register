@@ -8,4 +8,6 @@ export const projectsApi = {
     apiClient.get<{ project: Project; stats: Record<string, number | null> }>(`/projects/${id}`).then(r => r.data),
   create: (data: Partial<Project>) =>
     apiClient.post<{ project: Project }>('/projects', data).then(r => r.data.project),
+  delete: (id: string) =>
+    apiClient.delete(`/projects/${id}`).then(r => r.data),
 }

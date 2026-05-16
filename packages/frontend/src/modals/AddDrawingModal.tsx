@@ -11,6 +11,7 @@ import { useAuthStore } from '../store/authStore'
 import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
 import { AddProjectModal } from './AddProjectModal'
 import { AddUserModal } from './AddUserModal'
+import { ManageProjectsModal } from './ManageProjectsModal'
 import type { DrawingDraft } from '../types'
 
 interface AddDrawingModalProps {
@@ -62,6 +63,7 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
   const [error, setError] = useState('')
   const [showAddProject, setShowAddProject] = useState(false)
   const [showAddDesigner, setShowAddDesigner] = useState(false)
+  const [showManageProjects, setShowManageProjects] = useState(false)
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
@@ -182,6 +184,14 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
                 title="Add new project"
               >
                 ＋ New
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowManageProjects(true)}
+                className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
+                title="Manage projects"
+              >
+                🗂
               </button>
             </div>
           </div>
@@ -325,6 +335,12 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           update('designerId', userId)
           setShowAddDesigner(false)
         }}
+      />
+
+      {/* Inline: Manage Projects */}
+      <ManageProjectsModal
+        open={showManageProjects}
+        onClose={() => setShowManageProjects(false)}
       />
     </Modal>
   )

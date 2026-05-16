@@ -104,4 +104,25 @@ router.post('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Requ
   }
 })
 
+// DELETE /api/projects/:id — manager+ only, blocked if project has drawings
+router.delete('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+
+    // Block delete if project has any drawings (including soft-deleted)
+    const drawingCount = await prisma.drawing.count({ where: { projectId: id } })
+    if (drawingCount > 0) {
+      return res.status(409).json({
+        error: `Cannot delete: this project has ${drawingCount} drawing${drawingCount > 1 ? 's' : ''} linked to it`,
+        code: 'HAS_DRAWINGS',
+      })
+    }
+
+    await prisma.project.delete({ where: { id } })
+    return res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 export default router
