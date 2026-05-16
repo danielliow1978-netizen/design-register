@@ -20,6 +20,8 @@ import { exportTableToCsv } from '../lib/exportCsv'
 import { formatSGT } from '../lib/dates'
 import type { Drawing, LateReason } from '../types'
 import { AddDrawingModal } from '../modals/AddDrawingModal'
+import { AddProjectModal } from '../modals/AddProjectModal'
+import { EditDrawingModal } from '../modals/EditDrawingModal'
 import { LateReasonModal } from '../modals/LateReasonModal'
 import { DeleteConfirmModal } from '../modals/DeleteConfirmModal'
 
@@ -46,6 +48,8 @@ export default function RegisterPage() {
 
   // Modals
   const [addOpen, setAddOpen] = useState(false)
+  const [addProjectOpen, setAddProjectOpen] = useState(false)
+  const [editDrawing, setEditDrawing] = useState<Drawing | null>(null)
   const [lateDrawing, setLateDrawing] = useState<Drawing | null>(null)
   const [deleteDrawing, setDeleteDrawing] = useState<Drawing | null>(null)
 
@@ -164,6 +168,11 @@ export default function RegisterPage() {
             projects={projects}
             selectedId={selectedProjectId}
             onSelect={setSelectedProjectId}
+            onAddProject={
+              ['DESIGN_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN'].includes(user?.role ?? '')
+                ? () => setAddProjectOpen(true)
+                : undefined
+            }
           />
         )}
 
@@ -261,14 +270,22 @@ export default function RegisterPage() {
           sortColumns={sortColumns}
           onHeaderClick={handleHeaderClick}
           onComplete={handleComplete}
-          onEdit={_d => {}}
+          onEdit={d => setEditDrawing(d)}
           onDelete={d => setDeleteDrawing(d)}
           view={view}
           isLoading={drawingsLoading}
+          currentUserId={user?.id}
+          currentUserRole={user?.role}
         />
 
         {/* Modals */}
         <AddDrawingModal open={addOpen} onClose={() => setAddOpen(false)} />
+        <AddProjectModal
+          open={addProjectOpen}
+          onClose={() => setAddProjectOpen(false)}
+          onCreated={id => setSelectedProjectId(id)}
+        />
+        <EditDrawingModal open={!!editDrawing} drawing={editDrawing} onClose={() => setEditDrawing(null)} />
         <LateReasonModal
           open={!!lateDrawing}
           drawing={lateDrawing}

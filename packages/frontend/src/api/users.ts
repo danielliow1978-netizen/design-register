@@ -25,4 +25,6 @@ export const usersApi = {
     active?: boolean
   }) =>
     apiClient.patch<{ user: User }>(`/users/${id}`, data).then(r => r.data.user),
+  delete: (id: string) =>
+    apiClient.delete(`/users/${id}`).then(r => r.data),
 }

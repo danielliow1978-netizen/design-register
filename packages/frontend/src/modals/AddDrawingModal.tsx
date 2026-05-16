@@ -12,6 +12,7 @@ import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
 import { AddProjectModal } from './AddProjectModal'
 import { AddUserModal } from './AddUserModal'
 import { ManageProjectsModal } from './ManageProjectsModal'
+import { ManageUsersModal } from './ManageUsersModal'
 import type { DrawingDraft } from '../types'
 
 interface AddDrawingModalProps {
@@ -64,6 +65,7 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
   const [showAddProject, setShowAddProject] = useState(false)
   const [showAddDesigner, setShowAddDesigner] = useState(false)
   const [showManageProjects, setShowManageProjects] = useState(false)
+  const [showManageUsers, setShowManageUsers] = useState(false)
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
@@ -268,6 +270,14 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
               >
                 ＋ New
               </button>
+              <button
+                type="button"
+                onClick={() => setShowManageUsers(true)}
+                className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
+                title="Manage team members"
+              >
+                🗂
+              </button>
             </div>
           </div>
         </div>
@@ -341,6 +351,12 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
       <ManageProjectsModal
         open={showManageProjects}
         onClose={() => setShowManageProjects(false)}
+      />
+
+      {/* Inline: Manage Users */}
+      <ManageUsersModal
+        open={showManageUsers}
+        onClose={() => setShowManageUsers(false)}
       />
     </Modal>
   )

@@ -13,6 +13,8 @@ interface DrawingTableProps {
   onDelete: (drawing: Drawing) => void
   view: 'designer' | 'project'
   isLoading?: boolean
+  currentUserId?: string
+  currentUserRole?: string
 }
 
 const HEADERS: { field: string; label: string; locked?: boolean }[] = [
@@ -31,6 +33,7 @@ const HEADERS: { field: string; label: string; locked?: boolean }[] = [
 
 export function DrawingTable({
   drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, view, isLoading,
+  currentUserId, currentUserRole,
 }: DrawingTableProps) {
   const sortedIdx = (field: string) => sortColumns.findIndex(s => s.field === field)
   const sortDir = (field: string) => sortColumns.find(s => s.field === field)?.direction
@@ -85,6 +88,9 @@ export function DrawingTable({
       <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1400 }}>
         <thead>
           <tr>
+            <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
+              Actions
+            </th>
             {view === 'project' && (
               <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
                 Designer
@@ -92,7 +98,7 @@ export function DrawingTable({
             )}
             {HEADERS.map(h => th(h.field, h.label, h.locked))}
             <th className="px-2.5 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap">
-              Actions
+              Complete
             </th>
           </tr>
         </thead>
@@ -109,6 +115,30 @@ export function DrawingTable({
 
             return (
               <tr key={drawing.id} className="border-b border-border hover:bg-surface-2/50 transition-colors">
+                <td className="px-2 py-2 align-middle whitespace-nowrap">
+                  {(() => {
+                    const canEdit = currentUserRole === 'ADMIN' || drawing.createdById === currentUserId
+                    if (!canEdit) return <span className="text-text-3 text-[10px]">—</span>
+                    return (
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEdit(drawing)}
+                          className="w-6 h-6 flex items-center justify-center rounded text-text-2 hover:bg-info-bg hover:text-info-text transition-colors text-xs"
+                          title="Edit drawing"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          onClick={() => onDelete(drawing)}
+                          className="w-6 h-6 flex items-center justify-center rounded text-text-2 hover:bg-danger-bg hover:text-danger-text transition-colors text-xs"
+                          title="Delete drawing"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </td>
                 {view === 'project' && (
                   <td className="px-2.5 py-2 align-middle whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
@@ -147,21 +177,14 @@ export function DrawingTable({
                 <td className="px-2.5 py-2 align-middle">{statusPill(drawing.status)}</td>
                 <td className="px-2.5 py-2 align-middle text-center whitespace-nowrap">
                   {!isCompleted ? (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      onClick={() => onComplete(drawing)}
-                      className="mr-1"
-                    >
+                    <Button variant="success" size="sm" onClick={() => onComplete(drawing)}>
                       ✓ Complete
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="sm" className="mr-1 opacity-50 cursor-default" disabled>
+                    <Button variant="ghost" size="sm" className="opacity-50 cursor-default" disabled>
                       ✓ Done
                     </Button>
                   )}
-                  <Button variant="ghost" size="sm" onClick={() => onEdit(drawing)} className="mr-1">✎</Button>
-                  <Button variant="ghost" size="sm" onClick={() => onDelete(drawing)}>🗑</Button>
                 </td>
               </tr>
             )

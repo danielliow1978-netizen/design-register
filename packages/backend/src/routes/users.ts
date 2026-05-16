@@ -127,6 +127,36 @@ router.patch('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: 
   }
 })
 
+// DELETE /api/users/:id — hard delete, blocked if user has any drawings
+router.delete('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+
+    // Prevent deleting yourself
+    if (id === req.user!.id) {
+      return res.status(400).json({ error: 'You cannot delete your own account', code: 'SELF_DELETE' })
+    }
+
+    // Block if user has drawings as designer or requestor
+    const [asDesigner, asRequestor] = await Promise.all([
+      prisma.drawing.count({ where: { designerId: id } }),
+      prisma.drawing.count({ where: { requestorId: id } }),
+    ])
+    const total = asDesigner + asRequestor
+    if (total > 0) {
+      return res.status(409).json({
+        error: `Cannot delete: this user is linked to ${total} drawing${total > 1 ? 's' : ''}`,
+        code: 'HAS_DRAWINGS',
+      })
+    }
+
+    await prisma.user.delete({ where: { id } })
+    return res.json({ success: true })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // PATCH /api/users/:id/preferences
 router.patch('/:id/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
