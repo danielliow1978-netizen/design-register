@@ -64,8 +64,8 @@ router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Reque
   }
 })
 
-// POST /api/users — create user (DESIGN_MANAGER+)
-router.post('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// POST /api/users — create user (any authenticated user)
+router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = createUserSchema.parse(req.body)
 
@@ -127,8 +127,8 @@ router.patch('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: 
   }
 })
 
-// DELETE /api/users/:id — hard delete, blocked if user has any drawings
-router.delete('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// DELETE /api/users/:id — hard delete, blocked if user has any drawings (any authenticated user)
+router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params
 

@@ -64,6 +64,7 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
   const [error, setError] = useState('')
   const [showAddProject, setShowAddProject] = useState(false)
   const [showAddDesigner, setShowAddDesigner] = useState(false)
+  const [showAddRequestor, setShowAddRequestor] = useState(false)
   const [showManageProjects, setShowManageProjects] = useState(false)
   const [showManageUsers, setShowManageUsers] = useState(false)
 
@@ -284,10 +285,32 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
 
         <div className="mb-3">
           <label className={labelClass}>Requestor *</label>
-          <select className={selectClass} value={formData.requestorId} onChange={e => update('requestorId', e.target.value)}>
-            <option value="">Select requestor…</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role.replace('_', ' ')})</option>)}
-          </select>
+          <div className="flex gap-1">
+            <select
+              className={selectClass + " flex-1"}
+              value={formData.requestorId}
+              onChange={e => update('requestorId', e.target.value)}
+            >
+              <option value="">Select requestor…</option>
+              {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role.replace(/_/g, ' ')})</option>)}
+            </select>
+            <button
+              type="button"
+              onClick={() => setShowAddRequestor(true)}
+              className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
+              title="Add new requestor"
+            >
+              ＋ New
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowManageUsers(true)}
+              className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
+              title="Manage team members"
+            >
+              🗂
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-3">
@@ -344,6 +367,16 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
         onCreated={(userId) => {
           update('designerId', userId)
           setShowAddDesigner(false)
+        }}
+      />
+
+      {/* Inline: Add Requestor */}
+      <AddUserModal
+        open={showAddRequestor}
+        onClose={() => setShowAddRequestor(false)}
+        onCreated={(userId) => {
+          update('requestorId', userId)
+          setShowAddRequestor(false)
         }}
       />
 
