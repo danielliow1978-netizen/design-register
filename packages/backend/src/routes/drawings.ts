@@ -156,6 +156,14 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
   try {
     const data = createDrawingSchema.parse(req.body)
 
+    // Check uniqueness among active (non-deleted) drawings only
+    const duplicate = await prisma.drawing.findFirst({
+      where: { drawingNumber: data.drawingNumber, isDeleted: false },
+    })
+    if (duplicate) {
+      return res.status(409).json({ error: 'Drawing number already exists in the active register', code: 'DUPLICATE_DRAWING_NUMBER' })
+    }
+
     const reqDate = new Date(data.requestDate)
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
