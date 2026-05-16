@@ -12,7 +12,20 @@ interface AddUserModalProps {
   onCreated?: (userId: string) => void
 }
 
-const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
+const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER', 'QS_DEPARTMENT', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
+
+const ROLE_LABELS: Record<string, string> = {
+  DESIGNER: 'Designer',
+  SENIOR_DESIGNER: 'Senior Designer',
+  PROJECT_ENGINEER: 'Project Engineer',
+  QS_DEPARTMENT: 'QS Department',
+  DESIGN_MANAGER: 'Design Manager',
+  PROJECT_MANAGER: 'Project Manager',
+  DEPARTMENT_HEAD: 'Department Head',
+  COO: 'COO',
+  CEO: 'CEO',
+  ADMIN: 'Admin',
+}
 const AVATAR_COLORS: AvatarColor[] = ['info', 'success', 'warning', 'danger', 'purple', 'teal', 'neutral']
 
 const COLOR_BG: Record<AvatarColor, string> = {
@@ -26,10 +39,7 @@ const COLOR_BG: Record<AvatarColor, string> = {
 }
 
 function formatRole(role: string): string {
-  return role
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
+  return ROLE_LABELS[role] ?? role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
 }
 
 interface FormData {
