@@ -150,7 +150,17 @@ router.delete('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req:
       })
     }
 
-    await prisma.user.delete({ where: { id } })
+    // Clean up dependent records before deleting (FK constraints)
+    await prisma.$transaction([
+      // Remove drafts owned by this user
+      prisma.drawingDraft.deleteMany({ where: { userId: id } }),
+      // Delete audit log entries for this user
+      prisma.auditLog.deleteMany({ where: { userId: id } }),
+      // Nullify project manager references
+      prisma.project.updateMany({ where: { projectManagerId: id }, data: { projectManagerId: null } }),
+      // Hard delete the user
+      prisma.user.delete({ where: { id } }),
+    ])
     return res.json({ success: true })
   } catch (err) {
     next(err)
