@@ -38,7 +38,7 @@ app.use('/api/recycle', recycleRouter)
 app.use('/api/dashboard', dashboardRouter)
 
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() })
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '2' })
 })
 
 app.use(errorHandler)
