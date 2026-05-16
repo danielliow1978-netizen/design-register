@@ -1,10 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express'
 import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
+import bcrypt from 'bcryptjs'
 import { requireAuth, requireMinRole } from '../middleware/auth'
 
 const router = Router()
 const prisma = new PrismaClient()
+
+const ROLE_LEVELS = ['DESIGNER','SENIOR_DESIGNER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','ADMIN']
 
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'auto']).optional(),
@@ -12,11 +15,41 @@ const preferencesSchema = z.object({
   emailDigestEnabled: z.boolean().optional(),
 })
 
+const roleEnum = z.enum(['DESIGNER','SENIOR_DESIGNER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','ADMIN'])
+
+const createUserSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  initials: z.string().min(2).max(3).regex(/^[A-Z]+$/, 'Initials must be uppercase letters'),
+  role: roleEnum,
+  discipline: z.string().optional(),
+  avatarColor: z.string().optional(),
+  password: z.string().min(8),
+})
+
+const updateUserSchema = z.object({
+  fullName: z.string().min(1).optional(),
+  initials: z.string().min(2).max(3).regex(/^[A-Z]+$/, 'Initials must be uppercase letters').optional(),
+  role: roleEnum.optional(),
+  discipline: z.string().nullable().optional(),
+  avatarColor: z.string().optional(),
+  active: z.boolean().optional(),
+})
+
 // GET /api/users — list all users (manager+)
 router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const includeInactive = req.query.includeInactive === 'true'
+
+    if (includeInactive) {
+      const requesterLevel = ROLE_LEVELS.indexOf(req.user!.role)
+      if (requesterLevel < ROLE_LEVELS.indexOf('ADMIN')) {
+        return res.status(403).json({ error: 'Only admins can view inactive users', code: 'FORBIDDEN' })
+      }
+    }
+
     const users = await prisma.user.findMany({
-      where: { active: true },
+      where: includeInactive ? undefined : { active: true },
       select: {
         id: true, email: true, fullName: true, initials: true,
         avatarColor: true, role: true, discipline: true,
@@ -31,12 +64,75 @@ router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Reque
   }
 })
 
+// POST /api/users — create user (DESIGN_MANAGER+)
+router.post('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = createUserSchema.parse(req.body)
+
+    // Check email uniqueness
+    const existing = await prisma.user.findUnique({ where: { email: data.email } })
+    if (existing) {
+      return res.status(409).json({ error: 'Email already in use', code: 'EMAIL_TAKEN' })
+    }
+
+    const passwordHash = await bcrypt.hash(data.password, 10)
+
+    const user = await prisma.user.create({
+      data: {
+        fullName: data.fullName,
+        email: data.email,
+        initials: data.initials,
+        role: data.role,
+        discipline: data.discipline ?? null,
+        avatarColor: data.avatarColor ?? 'info',
+        passwordHash,
+      },
+      select: {
+        id: true, email: true, fullName: true, initials: true,
+        avatarColor: true, role: true, discipline: true, active: true, createdAt: true,
+      },
+    })
+
+    return res.status(201).json({ user })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// PATCH /api/users/:id — update user (DESIGN_MANAGER+)
+router.patch('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+    const data = updateUserSchema.parse(req.body)
+
+    if (data.active !== undefined) {
+      const requesterLevel = ROLE_LEVELS.indexOf(req.user!.role)
+      if (requesterLevel < ROLE_LEVELS.indexOf('ADMIN')) {
+        return res.status(403).json({ error: 'Only admins can change user active status', code: 'FORBIDDEN' })
+      }
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      select: {
+        id: true, email: true, fullName: true, initials: true,
+        avatarColor: true, role: true, discipline: true, active: true, createdAt: true,
+      },
+    })
+
+    return res.json({ user })
+  } catch (err) {
+    next(err)
+  }
+})
+
 // PATCH /api/users/:id/preferences
 router.patch('/:id/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params
     // Users can only update their own preferences; managers can update any
-    const userLevel = ['DESIGNER','SENIOR_DESIGNER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','ADMIN'].indexOf(req.user!.role)
+    const userLevel = ROLE_LEVELS.indexOf(req.user!.role)
     if (id !== req.user!.id && userLevel < 2) {
       return res.status(403).json({ error: 'Can only update your own preferences', code: 'FORBIDDEN' })
     }

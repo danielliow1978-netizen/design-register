@@ -4,7 +4,9 @@ import { authApi } from '../../api/auth'
 import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from '../ui/Pill'
 
-const TABS = [
+const ROLE_LEVELS = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
+
+const BASE_TABS = [
   { path: '/register',    label: '📋 Register' },
   { path: '/productivity', label: '📊 Productivity' },
   { path: '/audit',       label: '📜 Audit log' },
@@ -13,6 +15,11 @@ const TABS = [
 
 export function TopBar() {
   const user = useAuthStore(s => s.user)
+  const isManager = user ? ROLE_LEVELS.indexOf(user.role) >= 2 : false
+  const allTabs = [
+    ...BASE_TABS,
+    ...(isManager ? [{ path: '/users', label: '👥 Team' }] : []),
+  ]
   const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()
 
@@ -29,11 +36,11 @@ export function TopBar() {
           <span>📐</span> Design Register
         </div>
         <nav className="flex gap-1">
-          {TABS.map(tab => (
+          {allTabs.map(tab => (
             <NavLink
               key={tab.path}
               to={tab.path}
-              className={({ isActive }) =>
+              className={({ isActive }: { isActive: boolean }) =>
                 `text-[13px] px-3 py-1.5 rounded-md transition-colors ${
                   isActive
                     ? 'bg-surface text-info-text font-medium border border-border'
