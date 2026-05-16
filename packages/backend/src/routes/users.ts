@@ -36,8 +36,8 @@ const updateUserSchema = z.object({
   active: z.boolean().optional(),
 })
 
-// GET /api/users — list all users (manager+)
-router.get('/', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/users — list all users (any authenticated user; includeInactive restricted to ADMIN)
+router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const includeInactive = req.query.includeInactive === 'true'
 
