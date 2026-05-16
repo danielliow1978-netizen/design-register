@@ -8,6 +8,9 @@ import { projectsApi } from '../api/projects'
 import { usersApi } from '../api/users'
 import { draftsApi } from '../api/drafts'
 import { useAuthStore } from '../store/authStore'
+import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
+import { AddProjectModal } from './AddProjectModal'
+import { AddUserModal } from './AddUserModal'
 import type { DrawingDraft } from '../types'
 
 interface AddDrawingModalProps {
@@ -16,7 +19,6 @@ interface AddDrawingModalProps {
   resumeDraft?: DrawingDraft
 }
 
-const DISCIPLINES = ['MECHANICAL', 'ELECTRICAL', 'ELV', 'FIRE_PROTECTION', 'PLUMBING']
 const CATEGORIES = ['TENDER', 'SHOP', 'CONSTRUCTION', 'AS_BUILT']
 
 interface DrawingFormData {
@@ -58,6 +60,8 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
     resumeDraft ? (resumeDraft.formData as unknown as DrawingFormData) : getInitialForm(user)
   )
   const [error, setError] = useState('')
+  const [showAddProject, setShowAddProject] = useState(false)
+  const [showAddDesigner, setShowAddDesigner] = useState(false)
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
@@ -162,10 +166,24 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           </div>
           <div>
             <label className={labelClass}>Project *</label>
-            <select className={selectClass} value={formData.projectId} onChange={e => update('projectId', e.target.value)}>
-              <option value="">Select project…</option>
-              {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-            </select>
+            <div className="flex gap-1">
+              <select
+                className={selectClass + " flex-1"}
+                value={formData.projectId}
+                onChange={e => update('projectId', e.target.value)}
+              >
+                <option value="">Select project…</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowAddProject(true)}
+                className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
+                title="Add new project"
+              >
+                ＋ New
+              </button>
+            </div>
           </div>
         </div>
 
@@ -177,10 +195,42 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div>
             <label className={labelClass}>Discipline *</label>
-            <select className={selectClass} value={formData.discipline} onChange={e => update('discipline', e.target.value)}>
-              <option value="">Select…</option>
-              {DISCIPLINES.map(d => <option key={d} value={d}>{d.replace('_', ' ')}</option>)}
-            </select>
+            {(() => {
+              const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
+              const showCustom = !isKnown && formData.discipline !== ''
+              const selectVal = showCustom ? '__custom__' : formData.discipline
+
+              return (
+                <>
+                  <select
+                    className={selectClass}
+                    value={selectVal}
+                    onChange={e => {
+                      if (e.target.value === '__custom__') {
+                        update('discipline', '')
+                      } else {
+                        update('discipline', e.target.value)
+                      }
+                    }}
+                  >
+                    <option value="">Select…</option>
+                    {DISCIPLINES.map(d => (
+                      <option key={d} value={d}>{DISCIPLINE_LABELS[d] ?? d.replace(/_/g, ' ')}</option>
+                    ))}
+                    <option value="__custom__">✏ Custom…</option>
+                  </select>
+                  {(selectVal === '__custom__' || showCustom) && (
+                    <input
+                      className={inputClass + " mt-1"}
+                      placeholder="Type discipline name…"
+                      value={formData.discipline}
+                      autoFocus
+                      onChange={e => update('discipline', e.target.value)}
+                    />
+                  )}
+                </>
+              )
+            })()}
           </div>
           <div>
             <label className={labelClass}>Category *</label>
@@ -191,10 +241,24 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           </div>
           <div>
             <label className={labelClass}>Designer *</label>
-            <select className={selectClass} value={formData.designerId} onChange={e => update('designerId', e.target.value)}>
-              <option value="">Select…</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
-            </select>
+            <div className="flex gap-1">
+              <select
+                className={selectClass + " flex-1"}
+                value={formData.designerId}
+                onChange={e => update('designerId', e.target.value)}
+              >
+                <option value="">Select…</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowAddDesigner(true)}
+                className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
+                title="Add new designer"
+              >
+                ＋ New
+              </button>
+            </div>
           </div>
         </div>
 
@@ -241,6 +305,26 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           {createMutation.isPending ? 'Creating…' : 'Create drawing'}
         </Button>
       </ModalFooter>
+
+      {/* Inline: Add Project */}
+      <AddProjectModal
+        open={showAddProject}
+        onClose={() => setShowAddProject(false)}
+        onCreated={(projectId) => {
+          update('projectId', projectId)
+          setShowAddProject(false)
+        }}
+      />
+
+      {/* Inline: Add Designer */}
+      <AddUserModal
+        open={showAddDesigner}
+        onClose={() => setShowAddDesigner(false)}
+        onCreated={(userId) => {
+          update('designerId', userId)
+          setShowAddDesigner(false)
+        }}
+      />
     </Modal>
   )
 }

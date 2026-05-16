@@ -56,7 +56,7 @@ const createDrawingSchema = z.object({
   drawingNumber: z.string().min(1).max(100),
   drawingTitle: z.string().min(1).max(500),
   projectId: z.string().min(1),
-  discipline: z.enum(['MECHANICAL', 'ELECTRICAL', 'ELV', 'FIRE_PROTECTION', 'PLUMBING']),
+  discipline: z.string().min(1).max(100),
   category: z.enum(['TENDER', 'SHOP', 'CONSTRUCTION', 'AS_BUILT']),
   designerId: z.string().min(1),
   requestorId: z.string().min(1),
@@ -68,7 +68,7 @@ const createDrawingSchema = z.object({
 
 const patchDrawingSchema = z.object({
   drawingTitle: z.string().min(1).max(500).optional(),
-  discipline: z.enum(['MECHANICAL', 'ELECTRICAL', 'ELV', 'FIRE_PROTECTION', 'PLUMBING']).optional(),
+  discipline: z.string().min(1).max(100).optional(),
   category: z.enum(['TENDER', 'SHOP', 'CONSTRUCTION', 'AS_BUILT']).optional(),
   designerId: z.string().optional(),
   requestorId: z.string().optional(),

@@ -1,5 +1,11 @@
 export type Role = 'DESIGNER' | 'SENIOR_DESIGNER' | 'DESIGN_MANAGER' | 'PROJECT_MANAGER' | 'DEPARTMENT_HEAD' | 'ADMIN'
-export type Discipline = 'MECHANICAL' | 'ELECTRICAL' | 'ELV' | 'FIRE_PROTECTION' | 'PLUMBING'
+export type Discipline =
+  | 'STRUCTURAL' | 'ARCHITECTURAL'
+  | 'MECHANICAL_WET' | 'MECHANICAL_DRY'
+  | 'PROCESS_WET' | 'PROCESS_DRY'
+  | 'ELECTRICAL' | 'CONTROL_AND_INSTRUMENTATION'
+  | 'FIRE_PROTECTION' | 'PLUMBING_AND_SANITARY'
+  | string  // allows legacy values and custom entries
 export type DrawingStatus = 'IN_PROGRESS' | 'COMPLETED' | 'OVERDUE'
 export type DrawingCategory = 'TENDER' | 'SHOP' | 'CONSTRUCTION' | 'AS_BUILT'
 export type ContractType = 'EPC' | 'EPCM'

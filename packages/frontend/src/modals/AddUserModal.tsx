@@ -3,15 +3,16 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal'
 import { Button } from '../components/ui/Button'
 import { usersApi } from '../api/users'
+import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
 import type { Role, AvatarColor } from '../types'
 
 interface AddUserModalProps {
   open: boolean
   onClose: () => void
+  onCreated?: (userId: string) => void
 }
 
 const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
-const DISCIPLINES = ['MECHANICAL', 'ELECTRICAL', 'ELV', 'FIRE_PROTECTION', 'PLUMBING']
 const AVATAR_COLORS: AvatarColor[] = ['info', 'success', 'warning', 'danger', 'purple', 'teal', 'neutral']
 
 const COLOR_BG: Record<AvatarColor, string> = {
@@ -51,7 +52,7 @@ const INITIAL: FormData = {
   password: '',
 }
 
-export function AddUserModal({ open, onClose }: AddUserModalProps) {
+export function AddUserModal({ open, onClose, onCreated }: AddUserModalProps) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<FormData>(INITIAL)
   const [error, setError] = useState('')
@@ -69,8 +70,9 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
         avatarColor: formData.avatarColor,
         password: formData.password,
       }),
-    onSuccess: () => {
+    onSuccess: (createdUser) => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
+      onCreated?.(createdUser.id)
       setCreatedPassword(formData.password)
       setError('')
     },
@@ -217,16 +219,42 @@ export function AddUserModal({ open, onClose }: AddUserModalProps) {
 
         <div className="mb-3">
           <label className={labelClass}>Discipline</label>
-          <select
-            className={selectClass}
-            value={formData.discipline}
-            onChange={e => update('discipline', e.target.value)}
-          >
-            <option value="">None</option>
-            {DISCIPLINES.map(d => (
-              <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
+          {(() => {
+            const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
+            const showCustom = !isKnown && formData.discipline !== ''
+            const selectVal = showCustom ? '__custom__' : formData.discipline
+
+            return (
+              <>
+                <select
+                  className={selectClass}
+                  value={selectVal}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      update('discipline', '')
+                    } else {
+                      update('discipline', e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">None</option>
+                  {DISCIPLINES.map(d => (
+                    <option key={d} value={d}>{DISCIPLINE_LABELS[d] ?? d.replace(/_/g, ' ')}</option>
+                  ))}
+                  <option value="__custom__">✏ Custom…</option>
+                </select>
+                {(selectVal === '__custom__' || showCustom) && (
+                  <input
+                    className={inputClass + " mt-1"}
+                    placeholder="Type discipline name…"
+                    value={formData.discipline}
+                    autoFocus
+                    onChange={e => update('discipline', e.target.value)}
+                  />
+                )}
+              </>
+            )
+          })()}
         </div>
 
         <div className="mb-3">

@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Avatar } from '../components/ui/Pill'
 import { usersApi } from '../api/users'
 import { useAuthStore } from '../store/authStore'
+import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
 import type { User, Role, AvatarColor } from '../types'
 
 interface EditUserModalProps {
@@ -14,7 +15,6 @@ interface EditUserModalProps {
 }
 
 const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
-const DISCIPLINES = ['MECHANICAL', 'ELECTRICAL', 'ELV', 'FIRE_PROTECTION', 'PLUMBING']
 const AVATAR_COLORS: AvatarColor[] = ['info', 'success', 'warning', 'danger', 'purple', 'teal', 'neutral']
 
 const COLOR_BG: Record<AvatarColor, string> = {
@@ -158,16 +158,42 @@ export function EditUserModal({ open, onClose, user }: EditUserModalProps) {
 
         <div className="mb-3">
           <label className={labelClass}>Discipline</label>
-          <select
-            className={selectClass}
-            value={formData.discipline}
-            onChange={e => update('discipline', e.target.value)}
-          >
-            <option value="">None</option>
-            {DISCIPLINES.map(d => (
-              <option key={d} value={d}>{d.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
+          {(() => {
+            const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
+            const showCustom = !isKnown && formData.discipline !== ''
+            const selectVal = showCustom ? '__custom__' : formData.discipline
+
+            return (
+              <>
+                <select
+                  className={selectClass}
+                  value={selectVal}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      update('discipline', '')
+                    } else {
+                      update('discipline', e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">None</option>
+                  {DISCIPLINES.map(d => (
+                    <option key={d} value={d}>{DISCIPLINE_LABELS[d] ?? d.replace(/_/g, ' ')}</option>
+                  ))}
+                  <option value="__custom__">✏ Custom…</option>
+                </select>
+                {(selectVal === '__custom__' || showCustom) && (
+                  <input
+                    className={inputClass + " mt-1"}
+                    placeholder="Type discipline name…"
+                    value={formData.discipline}
+                    autoFocus
+                    onChange={e => update('discipline', e.target.value)}
+                  />
+                )}
+              </>
+            )
+          })()}
         </div>
 
         <div className="mb-3">
