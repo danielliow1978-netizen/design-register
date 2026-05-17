@@ -14,13 +14,16 @@ interface EditUserModalProps {
   user: User | null
 }
 
-const ROLES: Role[] = ['DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER', 'QS_DEPARTMENT', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
+const ROLES: Role[] = ['DRAFTER', 'SENIOR_DRAFTER', 'DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER', 'QS_DEPARTMENT', 'ASSISTANT_DESIGN_MANAGER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
 
 const ROLE_LABELS: Record<string, string> = {
+  DRAFTER: 'Drafter',
+  SENIOR_DRAFTER: 'Senior Drafter',
   DESIGNER: 'Designer',
   SENIOR_DESIGNER: 'Senior Designer',
   PROJECT_ENGINEER: 'Project Engineer',
   QS_DEPARTMENT: 'QS Department',
+  ASSISTANT_DESIGN_MANAGER: 'Assistant Design Manager',
   DESIGN_MANAGER: 'Design Manager',
   PROJECT_MANAGER: 'Project Manager',
   DEPARTMENT_HEAD: 'Department Head',

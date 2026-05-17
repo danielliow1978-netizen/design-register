@@ -63,7 +63,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   })
 }
 
-const ROLE_HIERARCHY = ['DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN']
+const ROLE_HIERARCHY = ['DRAFTER','SENIOR_DRAFTER','DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','ASSISTANT_DESIGN_MANAGER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN']
 
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {

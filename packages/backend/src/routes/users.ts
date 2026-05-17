@@ -7,7 +7,7 @@ import { requireAuth, requireMinRole } from '../middleware/auth'
 const router = Router()
 const prisma = new PrismaClient()
 
-const ROLE_LEVELS = ['DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN']
+const ROLE_LEVELS = ['DRAFTER','SENIOR_DRAFTER','DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','ASSISTANT_DESIGN_MANAGER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN']
 
 const preferencesSchema = z.object({
   theme: z.enum(['light', 'dark', 'auto']).optional(),
@@ -15,7 +15,7 @@ const preferencesSchema = z.object({
   emailDigestEnabled: z.boolean().optional(),
 })
 
-const roleEnum = z.enum(['DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN'])
+const roleEnum = z.enum(['DRAFTER','SENIOR_DRAFTER','DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','ASSISTANT_DESIGN_MANAGER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN'])
 
 const createUserSchema = z.object({
   fullName: z.string().min(1),
