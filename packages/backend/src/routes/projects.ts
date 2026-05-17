@@ -109,8 +109,8 @@ router.delete('/:id', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req:
   try {
     const { id } = req.params
 
-    // Block delete if project has any drawings (including soft-deleted)
-    const drawingCount = await prisma.drawing.count({ where: { projectId: id } })
+    // Block delete if project has any active (non-deleted) drawings
+    const drawingCount = await prisma.drawing.count({ where: { projectId: id, isDeleted: false } })
     if (drawingCount > 0) {
       return res.status(409).json({
         error: `Cannot delete: this project has ${drawingCount} drawing${drawingCount > 1 ? 's' : ''} linked to it`,
