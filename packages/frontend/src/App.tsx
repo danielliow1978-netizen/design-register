@@ -9,6 +9,7 @@ import ProductivityPage from './pages/ProductivityPage'
 import AuditLogPage from './pages/AuditLogPage'
 import RecycleBinPage from './pages/RecycleBinPage'
 import UsersPage from './pages/UsersPage'
+import RequestorPage from './pages/RequestorPage'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
   {
     path: '/users',
     element: <ProtectedRoute><UsersPage /></ProtectedRoute>,
+  },
+  {
+    path: '/requestors',
+    element: <ProtectedRoute><RequestorPage /></ProtectedRoute>,
   },
   { path: '*', element: <Navigate to="/register" replace /> },
 ])

@@ -4,7 +4,7 @@ import { authApi } from '../../api/auth'
 import { ThemeToggle } from './ThemeToggle'
 import { Avatar } from '../ui/Pill'
 
-const ROLE_LEVELS = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
+const MANAGER_ROLES = ['DESIGN_MANAGER', 'ASSISTANT_DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
 
 const BASE_TABS = [
   { path: '/register',    label: '📋 Register' },
@@ -15,10 +15,12 @@ const BASE_TABS = [
 
 export function TopBar() {
   const user = useAuthStore(s => s.user)
-  const isManager = user ? ROLE_LEVELS.indexOf(user.role) >= 2 : false
+  const isManager = user ? MANAGER_ROLES.includes(user.role) : false
+  const isAdmin = user?.role === 'ADMIN'
   const allTabs = [
     ...BASE_TABS,
     ...(isManager ? [{ path: '/users', label: '👥 Team' }] : []),
+    ...(isAdmin ? [{ path: '/requestors', label: '🙋 Requestors' }] : []),
   ]
   const logout = useAuthStore(s => s.logout)
   const navigate = useNavigate()

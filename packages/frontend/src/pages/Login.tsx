@@ -82,9 +82,6 @@ export default function Login() {
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-text-3 mt-4">
-          Demo: daniel@designregister.com / Password123!
-        </p>
 
         {/* Theme toggle in footer */}
         <div className="flex justify-center mt-4">

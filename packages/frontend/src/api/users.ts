@@ -10,7 +10,7 @@ export const usersApi = {
     fullName: string
     email?: string        // optional for requestor-only accounts
     initials: string
-    role: Role
+    role?: Role           // optional; server defaults to DESIGNER for requestor accounts
     discipline?: string
     avatarColor?: string
     password?: string    // optional for requestor-only accounts

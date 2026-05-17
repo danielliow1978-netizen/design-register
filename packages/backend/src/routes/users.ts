@@ -21,7 +21,7 @@ const createUserSchema = z.object({
   fullName: z.string().min(1),
   email: z.string().email().optional(),          // optional for requestor-only accounts
   initials: z.string().min(2).max(3).regex(/^[A-Z]+$/, 'Initials must be uppercase letters'),
-  role: roleEnum,
+  role: roleEnum.optional(),
   discipline: z.string().optional(),
   avatarColor: z.string().optional(),
   password: z.string().min(8).optional(),        // optional for requestor-only accounts
@@ -87,7 +87,7 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
         fullName: data.fullName,
         email,
         initials: data.initials,
-        role: data.role,
+        role: data.role ?? 'DESIGNER',
         discipline: data.discipline ?? null,
         avatarColor: data.avatarColor ?? 'info',
         passwordHash,
