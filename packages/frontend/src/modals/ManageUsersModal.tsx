@@ -17,6 +17,8 @@ export function ManageUsersModal({ open, onClose }: ManageUsersModalProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
 
+  const isAdmin = currentUser?.role === 'ADMIN'
+
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: usersApi.list,
@@ -66,6 +68,9 @@ export function ManageUsersModal({ open, onClose }: ManageUsersModalProps) {
             {users.map(user => {
               const isSelf = user.id === currentUser?.id
               const isConfirming = confirmId === user.id
+              const isRequestorAccount = user.email.endsWith('@requestor.local')
+              // Only show delete for: requestor accounts (any user) or real accounts (ADMIN only)
+              const canDelete = !isSelf && (isRequestorAccount || isAdmin)
 
               return (
                 <div key={user.id} className="flex items-center justify-between py-2.5 gap-3">
@@ -73,7 +78,10 @@ export function ManageUsersModal({ open, onClose }: ManageUsersModalProps) {
                     <Avatar initials={user.initials} color={user.avatarColor} size="sm" />
                     <div className="min-w-0">
                       <div className="text-xs font-medium text-text truncate">{user.fullName}</div>
-                      <div className="text-[10px] text-text-2 truncate">{user.email}</div>
+                      {/* Show email only for requestor placeholder accounts so users know it's auto-generated */}
+                      {isRequestorAccount && (
+                        <div className="text-[10px] text-text-3 italic truncate">Requestor account</div>
+                      )}
                     </div>
                   </div>
 
@@ -82,7 +90,7 @@ export function ManageUsersModal({ open, onClose }: ManageUsersModalProps) {
                       {user.role.replace(/_/g, ' ')}
                     </span>
 
-                    {isConfirming ? (
+                    {canDelete && (isConfirming ? (
                       <div className="flex items-center gap-1 text-[10px]">
                         <span className="text-text-2">Confirm?</span>
                         <button
@@ -101,23 +109,13 @@ export function ManageUsersModal({ open, onClose }: ManageUsersModalProps) {
                       </div>
                     ) : (
                       <button
-                        onClick={() => {
-                          if (!isSelf) {
-                            setErrorMsg('')
-                            setConfirmId(user.id)
-                          }
-                        }}
-                        disabled={isSelf}
-                        title={isSelf ? 'Cannot delete your own account' : 'Delete user'}
-                        className={`w-6 h-6 flex items-center justify-center rounded text-xs transition-colors ${
-                          isSelf
-                            ? 'text-text-3 cursor-not-allowed opacity-40'
-                            : 'text-text-2 hover:bg-danger-bg hover:text-danger-text'
-                        }`}
+                        onClick={() => { setErrorMsg(''); setConfirmId(user.id) }}
+                        title="Delete"
+                        className="w-6 h-6 flex items-center justify-center rounded text-xs text-text-2 hover:bg-danger-bg hover:text-danger-text transition-colors"
                       >
                         🗑
                       </button>
-                    )}
+                    ))}
                   </div>
                 </div>
               )

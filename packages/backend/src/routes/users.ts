@@ -142,6 +142,22 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response, next: Nex
       return res.status(400).json({ error: 'You cannot delete your own account', code: 'SELF_DELETE' })
     }
 
+    // Fetch the target user to check account type
+    const targetUser = await prisma.user.findUnique({ where: { id } })
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User not found', code: 'NOT_FOUND' })
+    }
+
+    // Requestor-only accounts (auto-generated @requestor.local email) can be deleted by anyone.
+    // Real team accounts can only be deleted by ADMIN.
+    const isRequestorAccount = targetUser.email.endsWith('@requestor.local')
+    if (!isRequestorAccount) {
+      const requesterLevel = ROLE_LEVELS.indexOf(req.user!.role)
+      if (requesterLevel < ROLE_LEVELS.indexOf('ADMIN')) {
+        return res.status(403).json({ error: 'Only admins can delete team member accounts', code: 'FORBIDDEN' })
+      }
+    }
+
     // Block if user has drawings as designer or requestor
     const [asDesigner, asRequestor] = await Promise.all([
       prisma.drawing.count({ where: { designerId: id } }),
