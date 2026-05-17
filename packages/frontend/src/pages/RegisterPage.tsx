@@ -128,6 +128,7 @@ export default function RegisterPage() {
       drawingsApi.softDelete(id, password, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drawings'] })
+      queryClient.invalidateQueries({ queryKey: ['recycle'] })
       setDeleteDrawing(null)
     },
   })
