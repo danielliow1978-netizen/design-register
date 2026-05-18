@@ -1,4 +1,4 @@
-import { MouseEvent } from 'react'
+import { MouseEvent, useState } from 'react'
 import type { Drawing, SortColumn } from '../../types'
 import { statusPill, categoryPill, Avatar } from '../ui/Pill'
 import { Button } from '../ui/Button'
@@ -11,6 +11,7 @@ interface DrawingTableProps {
   onComplete: (drawing: Drawing) => void
   onEdit: (drawing: Drawing) => void
   onDelete: (drawing: Drawing) => void
+  onUpdateReason?: (id: string, reason: string) => void
   view: 'designer' | 'project'
   isLoading?: boolean
   currentUserId?: string
@@ -32,9 +33,12 @@ const HEADERS: { field: string; label: string; locked?: boolean }[] = [
 ]
 
 export function DrawingTable({
-  drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, view, isLoading,
+  drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, onUpdateReason, view, isLoading,
   currentUserId, currentUserRole,
 }: DrawingTableProps) {
+  const [editingReasonId, setEditingReasonId] = useState<string | null>(null)
+  const [reasonDraft, setReasonDraft] = useState('')
+
   const sortedIdx = (field: string) => sortColumns.findIndex(s => s.field === field)
   const sortDir = (field: string) => sortColumns.find(s => s.field === field)?.direction
 
@@ -67,6 +71,11 @@ export function DrawingTable({
     )
   }
 
+  const saveReason = (id: string) => {
+    if (onUpdateReason) onUpdateReason(id, reasonDraft.trim())
+    setEditingReasonId(null)
+  }
+
   if (isLoading) {
     return (
       <div className="border border-border rounded-md overflow-hidden">
@@ -85,7 +94,7 @@ export function DrawingTable({
 
   return (
     <div className="overflow-x-auto border border-border rounded-md">
-      <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1400 }}>
+      <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1500 }}>
         <thead>
           <tr>
             <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
@@ -100,18 +109,23 @@ export function DrawingTable({
             <th className="px-2.5 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap">
               Complete
             </th>
+            <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap min-w-[180px]">
+              Reason of delay
+            </th>
           </tr>
         </thead>
         <tbody>
           {drawings.map(drawing => {
             const isCompleted = drawing.status === 'COMPLETED'
             const delay = drawing.delay ?? null
+            const hasDelay = delay !== null && delay > 0
             const delayClass = delay === null
               ? 'text-text-3'
               : delay > 0
               ? 'bg-danger-bg text-danger-text'
               : 'bg-success-bg text-success-text'
             const delayLabel = delay === null ? '—' : delay > 0 ? `⚠ +${delay}d` : `✓ ${delay}d`
+            const isEditingReason = editingReasonId === drawing.id
 
             return (
               <tr key={drawing.id} className="border-b border-border hover:bg-surface-2/50 transition-colors">
@@ -184,6 +198,54 @@ export function DrawingTable({
                     <Button variant="ghost" size="sm" className="opacity-50 cursor-default" disabled>
                       ✓ Done
                     </Button>
+                  )}
+                </td>
+
+                {/* Reason of Delay — inline editable when delay > 0 */}
+                <td className="px-2.5 py-2 align-middle">
+                  {!hasDelay ? (
+                    <span className="text-text-3">—</span>
+                  ) : isEditingReason ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        autoFocus
+                        className="flex-1 px-2 py-1 text-[11px] bg-surface border border-info-border rounded text-text focus:outline-none min-w-0"
+                        value={reasonDraft}
+                        onChange={e => setReasonDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveReason(drawing.id)
+                          if (e.key === 'Escape') setEditingReasonId(null)
+                        }}
+                        placeholder="Enter reason…"
+                        maxLength={500}
+                      />
+                      <button
+                        onClick={() => saveReason(drawing.id)}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-success-bg text-success-text text-xs hover:opacity-80"
+                        title="Save"
+                      >✓</button>
+                      <button
+                        onClick={() => setEditingReasonId(null)}
+                        className="shrink-0 w-6 h-6 flex items-center justify-center rounded bg-surface-2 text-text-2 text-xs hover:opacity-80"
+                        title="Cancel"
+                      >✕</button>
+                    </div>
+                  ) : (
+                    <div
+                      className="group flex items-center gap-1.5 cursor-pointer"
+                      onClick={() => {
+                        setEditingReasonId(drawing.id)
+                        setReasonDraft(drawing.lateReasonDetail ?? '')
+                      }}
+                      title="Click to edit reason"
+                    >
+                      {drawing.lateReasonDetail ? (
+                        <span className="text-warning-text text-[11px] leading-tight">{drawing.lateReasonDetail}</span>
+                      ) : (
+                        <span className="text-text-3 italic text-[11px]">Click to add reason…</span>
+                      )}
+                      <span className="opacity-0 group-hover:opacity-60 text-[10px] text-text-3 shrink-0">✎</span>
+                    </div>
                   )}
                 </td>
               </tr>

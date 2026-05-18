@@ -5,7 +5,7 @@ interface ViewSwitcherProps {
 
 export function ViewSwitcher({ view, onChange }: ViewSwitcherProps) {
   return (
-    <div className="flex bg-surface-2 border border-border rounded-md p-0.5 w-fit mb-3.5">
+    <div className="flex bg-surface-2 border border-border rounded-md p-0.5 w-fit">
       {(['designer', 'project'] as const).map(v => (
         <button
           key={v}

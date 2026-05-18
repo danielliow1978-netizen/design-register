@@ -33,7 +33,7 @@ export default function Login() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-3xl mb-2">📐</div>
+          <img src="/logo.png" alt="Company logo" className="w-20 h-20 mx-auto mb-2 object-contain" />
           <h1 className="text-xl font-medium text-text">Design Register</h1>
           <p className="text-sm text-text-2 mt-1">M&E drawing productivity tracker</p>
         </div>

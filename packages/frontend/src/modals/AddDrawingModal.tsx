@@ -10,9 +10,7 @@ import { draftsApi } from '../api/drafts'
 import { useAuthStore } from '../store/authStore'
 import { DISCIPLINES, DISCIPLINE_LABELS } from '../lib/disciplines'
 import { AddProjectModal } from './AddProjectModal'
-import { AddUserModal } from './AddUserModal'
 import { ManageProjectsModal } from './ManageProjectsModal'
-import { ManageUsersModal } from './ManageUsersModal'
 import type { DrawingDraft } from '../types'
 
 interface AddDrawingModalProps {
@@ -63,13 +61,22 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
   )
   const [error, setError] = useState('')
   const [showAddProject, setShowAddProject] = useState(false)
-  const [showAddDesigner, setShowAddDesigner] = useState(false)
-  const [showAddRequestor, setShowAddRequestor] = useState(false)
   const [showManageProjects, setShowManageProjects] = useState(false)
-  const [showManageUsers, setShowManageUsers] = useState(false)
+  const [projectSearch, setProjectSearch] = useState('')
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
+
+  const filteredProjects = projects.filter(p =>
+    p.code.toLowerCase().includes(projectSearch.toLowerCase()) ||
+    p.name.toLowerCase().includes(projectSearch.toLowerCase())
+  )
+
+  // Split users into designers (team members) and requestors
+  const DESIGNER_ROLES = ['DRAFTER', 'SENIOR_DRAFTER', 'DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER',
+    'ASSISTANT_DESIGN_MANAGER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
+  const teamMembers = users.filter(u => !u.email.endsWith('@requestor.local') && DESIGNER_ROLES.includes(u.role))
+  const requestors = users.filter(u => u.email.endsWith('@requestor.local'))
   const { data: drafts = [] } = useQuery({ queryKey: ['drafts'], queryFn: draftsApi.list, enabled: open && !resumeDraft })
 
   // Check for existing drafts on open
@@ -172,30 +179,41 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           <div>
             <label className={labelClass}>Project *</label>
             <div className="flex gap-1">
-              <select
-                className={selectClass + " flex-1"}
-                value={formData.projectId}
-                onChange={e => update('projectId', e.target.value)}
-              >
-                <option value="">Select project…</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
-              </select>
-              <button
-                type="button"
-                onClick={() => setShowAddProject(true)}
-                className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
-                title="Add new project"
-              >
-                ＋ New
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowManageProjects(true)}
-                className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
-                title="Manage projects"
-              >
-                🗂
-              </button>
+              <div className="flex-1 flex flex-col gap-1">
+                <input
+                  className={inputClass}
+                  value={projectSearch}
+                  onChange={e => setProjectSearch(e.target.value)}
+                  placeholder="🔍 Search project…"
+                />
+                <select
+                  className={selectClass}
+                  value={formData.projectId}
+                  onChange={e => update('projectId', e.target.value)}
+                  size={filteredProjects.length > 0 ? Math.min(filteredProjects.length + 1, 5) : 2}
+                >
+                  <option value="">Select project…</option>
+                  {filteredProjects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddProject(true)}
+                  className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
+                  title="Add new project"
+                >
+                  ＋ New
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowManageProjects(true)}
+                  className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
+                  title="Manage projects"
+                >
+                  🗂
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -254,63 +272,27 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
           </div>
           <div>
             <label className={labelClass}>Designer *</label>
-            <div className="flex gap-1">
-              <select
-                className={selectClass + " flex-1"}
-                value={formData.designerId}
-                onChange={e => update('designerId', e.target.value)}
-              >
-                <option value="">Select…</option>
-                {users.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
-              </select>
-              <button
-                type="button"
-                onClick={() => setShowAddDesigner(true)}
-                className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
-                title="Add new designer"
-              >
-                ＋ New
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowManageUsers(true)}
-                className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
-                title="Manage team members"
-              >
-                🗂
-              </button>
-            </div>
+            <select
+              className={selectClass}
+              value={formData.designerId}
+              onChange={e => update('designerId', e.target.value)}
+            >
+              <option value="">Select…</option>
+              {teamMembers.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+            </select>
           </div>
         </div>
 
         <div className="mb-3">
           <label className={labelClass}>Requestor *</label>
-          <div className="flex gap-1">
-            <select
-              className={selectClass + " flex-1"}
-              value={formData.requestorId}
-              onChange={e => update('requestorId', e.target.value)}
-            >
-              <option value="">Select requestor…</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role.replace(/_/g, ' ')})</option>)}
-            </select>
-            <button
-              type="button"
-              onClick={() => setShowAddRequestor(true)}
-              className="shrink-0 px-2 py-1.5 text-xs text-info-text bg-info-bg border border-info-border rounded-md hover:opacity-80 transition-opacity"
-              title="Add new requestor"
-            >
-              ＋ New
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowManageUsers(true)}
-              className="shrink-0 px-2 py-1.5 text-xs text-text-2 bg-surface-2 border border-border rounded-md hover:opacity-80 transition-opacity"
-              title="Manage team members"
-            >
-              🗂
-            </button>
-          </div>
+          <select
+            className={selectClass}
+            value={formData.requestorId}
+            onChange={e => update('requestorId', e.target.value)}
+          >
+            <option value="">Select requestor…</option>
+            {requestors.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+          </select>
         </div>
 
         <div className="grid grid-cols-3 gap-3 mb-3">
@@ -360,38 +342,12 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
         }}
       />
 
-      {/* Inline: Add Designer */}
-      <AddUserModal
-        open={showAddDesigner}
-        onClose={() => setShowAddDesigner(false)}
-        onCreated={(userId) => {
-          update('designerId', userId)
-          setShowAddDesigner(false)
-        }}
-      />
-
-      {/* Inline: Add Requestor (compact — no email/discipline/password) */}
-      <AddUserModal
-        compact
-        open={showAddRequestor}
-        onClose={() => setShowAddRequestor(false)}
-        onCreated={(userId) => {
-          update('requestorId', userId)
-          setShowAddRequestor(false)
-        }}
-      />
-
       {/* Inline: Manage Projects */}
       <ManageProjectsModal
         open={showManageProjects}
         onClose={() => setShowManageProjects(false)}
       />
 
-      {/* Inline: Manage Users */}
-      <ManageUsersModal
-        open={showManageUsers}
-        onClose={() => setShowManageUsers(false)}
-      />
     </Modal>
   )
 }

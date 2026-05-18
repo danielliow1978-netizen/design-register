@@ -67,16 +67,19 @@ const createDrawingSchema = z.object({
 })
 
 const patchDrawingSchema = z.object({
+  drawingNumber: z.string().min(1).max(100).optional(),
+  projectId: z.string().optional(),
   drawingTitle: z.string().min(1).max(500).optional(),
   discipline: z.string().min(1).max(100).optional(),
   category: z.enum(['TENDER', 'SHOP', 'CONSTRUCTION', 'AS_BUILT']).optional(),
   designerId: z.string().optional(),
   requestorId: z.string().optional(),
+  lateReasonDetail: z.string().max(1000).optional(),
+  notes: z.string().optional(),
   // Locked fields — if any of these arrive we reject the whole request
   requestDate: z.never({ message: 'requestDate is locked after creation' }).optional(),
   startDate: z.never({ message: 'startDate is locked after creation' }).optional(),
   endDate: z.never({ message: 'endDate is locked after creation' }).optional(),
-  notes: z.string().optional(),
 })
 
 const completeSchema = z.object({
@@ -245,6 +248,16 @@ router.patch('/:id', requireAuth, async (req: Request, res: Response, next: Next
     const existing = await prisma.drawing.findUnique({ where: { id: req.params.id } })
     if (!existing || existing.isDeleted) {
       return res.status(404).json({ error: 'Drawing not found', code: 'NOT_FOUND' })
+    }
+
+    // If drawing number is being changed, check for duplicates among active drawings
+    if (data.drawingNumber && data.drawingNumber !== existing.drawingNumber) {
+      const duplicate = await prisma.drawing.findFirst({
+        where: { drawingNumber: data.drawingNumber, isDeleted: false, id: { not: req.params.id } },
+      })
+      if (duplicate) {
+        return res.status(409).json({ error: 'Drawing number already exists in the active register', code: 'DUPLICATE_DRAWING_NUMBER' })
+      }
     }
 
     // Build audit details

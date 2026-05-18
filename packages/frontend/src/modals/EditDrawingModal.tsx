@@ -16,8 +16,12 @@ interface EditDrawingModalProps {
 }
 
 const CATEGORIES = ['TENDER', 'SHOP', 'CONSTRUCTION', 'AS_BUILT']
+const DESIGNER_ROLES = ['DRAFTER', 'SENIOR_DRAFTER', 'DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER',
+  'ASSISTANT_DESIGN_MANAGER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
 
 interface EditFormData {
+  drawingNumber: string
+  projectId: string
   drawingTitle: string
   discipline: string
   category: string
@@ -28,6 +32,8 @@ interface EditFormData {
 
 function formFromDrawing(d: Drawing): EditFormData {
   return {
+    drawingNumber: d.drawingNumber,
+    projectId: d.projectId,
     drawingTitle: d.drawingTitle,
     discipline: d.discipline,
     category: d.category,
@@ -40,22 +46,26 @@ function formFromDrawing(d: Drawing): EditFormData {
 export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalProps) {
   const queryClient = useQueryClient()
   const [formData, setFormData] = useState<EditFormData>(() =>
-    drawing ? formFromDrawing(drawing) : { drawingTitle: '', discipline: '', category: '', designerId: '', requestorId: '', notes: '' }
+    drawing ? formFromDrawing(drawing) : { drawingNumber: '', projectId: '', drawingTitle: '', discipline: '', category: '', designerId: '', requestorId: '', notes: '' }
   )
   const [error, setError] = useState('')
 
-  // Reset form when the drawing changes
   useEffect(() => {
     if (drawing) setFormData(formFromDrawing(drawing))
     setError('')
   }, [drawing])
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
-  const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
+  const { data: allUsers = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
+
+  const teamMembers = allUsers.filter(u => !u.email.endsWith('@requestor.local') && DESIGNER_ROLES.includes(u.role))
+  const requestors = allUsers.filter(u => u.email.endsWith('@requestor.local'))
 
   const patchMutation = useMutation({
     mutationFn: (data: EditFormData) =>
       drawingsApi.patch(drawing!.id, {
+        drawingNumber: data.drawingNumber,
+        projectId: data.projectId,
         drawingTitle: data.drawingTitle,
         discipline: data.discipline as Drawing['discipline'],
         category: data.category as Drawing['category'],
@@ -75,7 +85,7 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
 
   const handleSubmit = () => {
     setError('')
-    if (!formData.drawingTitle || !formData.discipline || !formData.category || !formData.designerId || !formData.requestorId) {
+    if (!formData.drawingNumber || !formData.projectId || !formData.drawingTitle || !formData.discipline || !formData.category || !formData.designerId || !formData.requestorId) {
       setError('Please fill in all required fields')
       return
     }
@@ -91,26 +101,46 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
 
   if (!drawing) return null
 
-  const projectName = projects.find(p => p.id === drawing.projectId)
-
   return (
     <Modal open={open} onClose={onClose} maxWidth="max-w-2xl">
       <ModalHeader onClose={onClose}>
         <div className="w-9 h-9 rounded-full bg-info-bg text-info-text flex items-center justify-center text-lg">✎</div>
         <div>
           <div className="font-medium text-base">Edit drawing</div>
-          <div className="text-xs text-text-2 font-mono">{drawing.drawingNumber}</div>
+          <div className="text-xs text-text-2 font-mono">{drawing.drawingNumber} ({drawing.drawingTitle})</div>
         </div>
       </ModalHeader>
 
       <ModalBody>
-        {/* Locked fields (read-only info) */}
+        {/* Locked date fields only */}
         <div className="bg-surface-2 border border-border rounded-md px-3 py-2.5 mb-4 text-[11px] text-text-3 flex flex-wrap gap-x-6 gap-y-1">
-          <span>🔒 Drawing no.: <strong className="text-text-2">{drawing.drawingNumber}</strong></span>
-          <span>🔒 Project: <strong className="text-text-2">{projectName?.code} — {projectName?.name}</strong></span>
           <span>🔒 Request: <strong className="text-text-2">{formatSGTShort(drawing.requestDate)}</strong></span>
           <span>🔒 Start: <strong className="text-text-2">{formatSGTShort(drawing.startDate)}</strong></span>
           <span>🔒 End: <strong className="text-text-2">{formatSGTShort(drawing.endDate)}</strong></span>
+        </div>
+
+        {/* Drawing number + Project — now editable */}
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div>
+            <label className={labelClass}>Drawing number *</label>
+            <input
+              className={inputClass + " font-mono"}
+              value={formData.drawingNumber}
+              onChange={e => update('drawingNumber', e.target.value)}
+              placeholder="e.g. PRJ-101-M-CD-001"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Project *</label>
+            <select
+              className={selectClass}
+              value={formData.projectId}
+              onChange={e => update('projectId', e.target.value)}
+            >
+              <option value="">Select project…</option>
+              {projects.map(p => <option key={p.id} value={p.id}>{p.code} — {p.name}</option>)}
+            </select>
+          </div>
         </div>
 
         <div className="mb-3">
@@ -174,7 +204,7 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
             <label className={labelClass}>Designer *</label>
             <select className={selectClass} value={formData.designerId} onChange={e => update('designerId', e.target.value)}>
               <option value="">Select…</option>
-              {users.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
+              {teamMembers.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
             </select>
           </div>
         </div>
@@ -183,7 +213,7 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
           <label className={labelClass}>Requestor *</label>
           <select className={selectClass} value={formData.requestorId} onChange={e => update('requestorId', e.target.value)}>
             <option value="">Select requestor…</option>
-            {users.map(u => <option key={u.id} value={u.id}>{u.fullName} ({u.role.replace(/_/g, ' ')})</option>)}
+            {requestors.map(u => <option key={u.id} value={u.id}>{u.fullName}</option>)}
           </select>
         </div>
 

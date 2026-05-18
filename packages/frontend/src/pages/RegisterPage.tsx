@@ -46,6 +46,9 @@ export default function RegisterPage() {
     { field: 'endDate', direction: 'asc' },
   ])
 
+  // Grid view toggle (designer tab)
+  const [designerGridView, setDesignerGridView] = useState(false)
+
   // Modals
   const [addOpen, setAddOpen] = useState(false)
   const [addProjectOpen, setAddProjectOpen] = useState(false)
@@ -79,7 +82,12 @@ export default function RegisterPage() {
     queryFn: usersApi.list,
   })
 
-  const designers = users.filter(u => ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER'].includes(u.role))
+  // Show all drawing-producing roles as designer tabs (exclude requestor-only @requestor.local accounts)
+  const designers = users.filter(u =>
+    ['DRAFTER', 'SENIOR_DRAFTER', 'DESIGNER', 'SENIOR_DESIGNER', 'PROJECT_ENGINEER',
+     'ASSISTANT_DESIGN_MANAGER', 'DESIGN_MANAGER'].includes(u.role) &&
+    !u.email.endsWith('@requestor.local')
+  )
 
   // Drawing counts per designer/project
   const { data: allDrawings = [] } = useQuery({
@@ -122,6 +130,15 @@ export default function RegisterPage() {
     }
   }
 
+  // Update late reason mutation
+  const updateReasonMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) =>
+      drawingsApi.patch(id, { lateReasonDetail: reason }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['drawings'] })
+    },
+  })
+
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: ({ id, password, reason }: { id: string; password: string; reason: string }) =>
@@ -153,8 +170,38 @@ export default function RegisterPage() {
       <div className="max-w-[1280px] mx-auto px-6 py-6">
         <TopBar />
 
-        {/* View switcher */}
-        <ViewSwitcher view={view} onChange={setView} />
+        {/* View switcher + grid toggle */}
+        <div className="flex items-center gap-2 mb-3.5">
+          <ViewSwitcher view={view} onChange={v => { setView(v); if (v !== 'designer') setDesignerGridView(false) }} />
+          {view === 'designer' && (
+            <button
+              onClick={() => setDesignerGridView(g => !g)}
+              title={designerGridView ? 'Switch to tab view' : 'Switch to grid view'}
+              className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 border rounded-md transition-colors ${
+                designerGridView
+                  ? 'border-info-border bg-info-bg text-info-text'
+                  : 'border-border bg-surface-2 text-text-2 hover:border-border-strong hover:text-text'
+              }`}
+            >
+              {designerGridView ? (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                  </svg>
+                  Tab view
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                  </svg>
+                  Grid view
+                </>
+              )}
+            </button>
+          )}
+        </div>
 
         {/* Tabs */}
         {view === 'designer' ? (
@@ -163,6 +210,8 @@ export default function RegisterPage() {
             counts={designerCounts}
             selectedId={selectedDesignerId}
             onSelect={setSelectedDesignerId}
+            allDrawings={allDrawings}
+            gridView={designerGridView}
           />
         ) : (
           <ProjectTab
@@ -273,6 +322,7 @@ export default function RegisterPage() {
           onComplete={handleComplete}
           onEdit={d => setEditDrawing(d)}
           onDelete={d => setDeleteDrawing(d)}
+          onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
           view={view}
           isLoading={drawingsLoading}
           currentUserId={user?.id}

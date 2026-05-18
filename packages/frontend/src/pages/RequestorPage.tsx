@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button'
 import { Avatar } from '../components/ui/Pill'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal'
 import { usersApi } from '../api/users'
-import type { AvatarColor } from '../types'
+import type { AvatarColor, User } from '../types'
 
 const AVATAR_COLORS: AvatarColor[] = ['info', 'success', 'warning', 'danger', 'purple', 'teal', 'neutral']
 const COLOR_BG: Record<AvatarColor, string> = {
@@ -18,19 +18,28 @@ const COLOR_BG: Record<AvatarColor, string> = {
   neutral: 'bg-surface-2',
 }
 
-interface AddForm {
+interface RequestorForm {
   fullName: string
   initials: string
   avatarColor: AvatarColor
 }
 
-const EMPTY_FORM: AddForm = { fullName: '', initials: '', avatarColor: 'info' }
+const EMPTY_FORM: RequestorForm = { fullName: '', initials: '', avatarColor: 'info' }
 
 export default function RequestorPage() {
   const queryClient = useQueryClient()
+
+  // Add modal
   const [showAdd, setShowAdd] = useState(false)
-  const [form, setForm] = useState<AddForm>(EMPTY_FORM)
+  const [addForm, setAddForm] = useState<RequestorForm>(EMPTY_FORM)
   const [addError, setAddError] = useState('')
+
+  // Edit modal
+  const [editTarget, setEditTarget] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState<RequestorForm>(EMPTY_FORM)
+  const [editError, setEditError] = useState('')
+
+  // Delete confirm
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
 
@@ -41,17 +50,17 @@ export default function RequestorPage() {
   })
   const requestors = allUsers.filter(u => u.email.endsWith('@requestor.local'))
 
+  // Add mutation
   const addMutation = useMutation({
     mutationFn: () =>
       usersApi.create({
-        fullName: form.fullName.trim(),
-        initials: form.initials.trim().toUpperCase(),
-        avatarColor: form.avatarColor,
-        // email, password, role, discipline auto-generated/defaulted server-side
+        fullName: addForm.fullName.trim(),
+        initials: addForm.initials.trim().toUpperCase(),
+        avatarColor: addForm.avatarColor,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] })
-      setForm(EMPTY_FORM)
+      setAddForm(EMPTY_FORM)
       setAddError('')
       setShowAdd(false)
     },
@@ -61,6 +70,26 @@ export default function RequestorPage() {
     },
   })
 
+  // Edit mutation
+  const editMutation = useMutation({
+    mutationFn: () =>
+      usersApi.update(editTarget!.id, {
+        fullName: editForm.fullName.trim(),
+        initials: editForm.initials.trim().toUpperCase(),
+        avatarColor: editForm.avatarColor,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] })
+      setEditTarget(null)
+      setEditError('')
+    },
+    onError: (err: unknown) => {
+      const e = err as { response?: { data?: { error?: string } } }
+      setEditError(e.response?.data?.error || 'Failed to update requestor')
+    },
+  })
+
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string) => usersApi.delete(id),
     onSuccess: () => {
@@ -76,14 +105,43 @@ export default function RequestorPage() {
   })
 
   const handleAdd = () => {
-    if (!form.fullName.trim()) { setAddError('Full name is required'); return }
-    if (!form.initials.trim() || form.initials.trim().length < 2) { setAddError('Initials must be 2–3 letters'); return }
+    if (!addForm.fullName.trim()) { setAddError('Full name is required'); return }
+    if (!addForm.initials.trim() || addForm.initials.trim().length < 2) { setAddError('Initials must be 2–3 letters'); return }
     setAddError('')
     addMutation.mutate()
   }
 
+  const openEdit = (r: User) => {
+    setEditTarget(r)
+    setEditForm({ fullName: r.fullName, initials: r.initials, avatarColor: r.avatarColor })
+    setEditError('')
+  }
+
+  const handleEdit = () => {
+    if (!editForm.fullName.trim()) { setEditError('Full name is required'); return }
+    if (!editForm.initials.trim() || editForm.initials.trim().length < 2) { setEditError('Initials must be 2–3 letters'); return }
+    setEditError('')
+    editMutation.mutate()
+  }
+
   const inputClass = "w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-md text-text focus:outline-none focus:border-info-border transition-colors"
   const labelClass = "block text-[10px] text-text-2 mb-1 font-medium uppercase tracking-wide"
+
+  const ColorPicker = ({ value, onChange }: { value: AvatarColor; onChange: (c: AvatarColor) => void }) => (
+    <div className="flex items-center gap-2">
+      {AVATAR_COLORS.map(color => (
+        <button
+          key={color}
+          type="button"
+          onClick={() => onChange(color)}
+          className={`w-5 h-5 rounded-full transition-all ${COLOR_BG[color]} ${
+            value === color ? 'ring-2 ring-offset-1 ring-info-border' : 'hover:scale-110'
+          }`}
+          title={color}
+        />
+      ))}
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-bg">
@@ -95,7 +153,7 @@ export default function RequestorPage() {
             <h2 className="text-base font-medium text-text">🙋 Requestors</h2>
             <p className="text-xs text-text-3 mt-0.5">{requestors.length} requestor{requestors.length !== 1 ? 's' : ''} · Isolated from Team members</p>
           </div>
-          <Button variant="primary" onClick={() => { setForm(EMPTY_FORM); setAddError(''); setShowAdd(true) }}>
+          <Button variant="primary" onClick={() => { setAddForm(EMPTY_FORM); setAddError(''); setShowAdd(true) }}>
             + Add requestor
           </Button>
         </div>
@@ -119,11 +177,8 @@ export default function RequestorPage() {
             <table className="w-full border-collapse text-[12px]">
               <thead>
                 <tr>
-                  {['Requestor', 'Actions'].map(h => (
-                    <th key={h} className={`px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-text-3 bg-surface-2 border-b border-border-strong ${h === 'Actions' ? 'text-right' : ''}`}>
-                      {h}
-                    </th>
-                  ))}
+                  <th className="px-4 py-2.5 text-left text-[10px] font-medium uppercase tracking-wide text-text-3 bg-surface-2 border-b border-border-strong">Requestor</th>
+                  <th className="px-4 py-2.5 text-right text-[10px] font-medium uppercase tracking-wide text-text-3 bg-surface-2 border-b border-border-strong">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -156,13 +211,22 @@ export default function RequestorPage() {
                             </button>
                           </span>
                         ) : (
-                          <button
-                            onClick={() => { setDeleteError(''); setConfirmDeleteId(r.id) }}
-                            className="w-7 h-7 inline-flex items-center justify-center rounded text-text-3 hover:bg-danger-bg hover:text-danger-text transition-colors"
-                            title="Delete requestor"
-                          >
-                            🗑
-                          </button>
+                          <span className="inline-flex items-center gap-1">
+                            <button
+                              onClick={() => openEdit(r)}
+                              className="w-7 h-7 inline-flex items-center justify-center rounded text-text-3 hover:bg-info-bg hover:text-info-text transition-colors"
+                              title="Edit requestor"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => { setDeleteError(''); setConfirmDeleteId(r.id) }}
+                              className="w-7 h-7 inline-flex items-center justify-center rounded text-text-3 hover:bg-danger-bg hover:text-danger-text transition-colors"
+                              title="Delete requestor"
+                            >
+                              🗑
+                            </button>
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -188,8 +252,8 @@ export default function RequestorPage() {
               <label className={labelClass}>Full name *</label>
               <input
                 className={inputClass}
-                value={form.fullName}
-                onChange={e => setForm(f => ({ ...f, fullName: e.target.value }))}
+                value={addForm.fullName}
+                onChange={e => setAddForm(f => ({ ...f, fullName: e.target.value }))}
                 placeholder="e.g. Ooi Kim Seng"
                 autoFocus
               />
@@ -199,8 +263,8 @@ export default function RequestorPage() {
               <label className={labelClass}>Initials *</label>
               <input
                 className={inputClass}
-                value={form.initials}
-                onChange={e => setForm(f => ({ ...f, initials: e.target.value.toUpperCase().slice(0, 3) }))}
+                value={addForm.initials}
+                onChange={e => setAddForm(f => ({ ...f, initials: e.target.value.toUpperCase().slice(0, 3) }))}
                 placeholder="OKS"
                 maxLength={3}
               />
@@ -209,21 +273,7 @@ export default function RequestorPage() {
 
             <div className="mb-1">
               <label className={labelClass}>Avatar color</label>
-              <div className="flex items-center gap-2">
-                {AVATAR_COLORS.map(color => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setForm(f => ({ ...f, avatarColor: color }))}
-                    className={`w-5 h-5 rounded-full transition-all ${COLOR_BG[color]} ${
-                      form.avatarColor === color
-                        ? 'ring-2 ring-offset-1 ring-info-border'
-                        : 'hover:scale-110'
-                    }`}
-                    title={color}
-                  />
-                ))}
-              </div>
+              <ColorPicker value={addForm.avatarColor} onChange={c => setAddForm(f => ({ ...f, avatarColor: c }))} />
             </div>
 
             {addError && (
@@ -235,6 +285,58 @@ export default function RequestorPage() {
             <Button onClick={() => setShowAdd(false)}>Cancel</Button>
             <Button variant="primary" onClick={handleAdd} disabled={addMutation.isPending}>
               {addMutation.isPending ? 'Adding…' : 'Add requestor'}
+            </Button>
+          </ModalFooter>
+        </Modal>
+
+        {/* Edit Requestor Modal */}
+        <Modal open={!!editTarget} onClose={() => setEditTarget(null)} maxWidth="max-w-sm">
+          <ModalHeader onClose={() => setEditTarget(null)}>
+            <div className="w-9 h-9 rounded-full bg-info-bg text-info-text flex items-center justify-center text-lg">✏️</div>
+            <div>
+              <div className="font-medium text-base">Edit requestor</div>
+              <div className="text-xs text-text-2">Update name, initials or avatar colour</div>
+            </div>
+          </ModalHeader>
+
+          <ModalBody>
+            <div className="mb-3">
+              <label className={labelClass}>Full name *</label>
+              <input
+                className={inputClass}
+                value={editForm.fullName}
+                onChange={e => setEditForm(f => ({ ...f, fullName: e.target.value }))}
+                placeholder="e.g. Ooi Kim Seng"
+                autoFocus
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className={labelClass}>Initials *</label>
+              <input
+                className={inputClass}
+                value={editForm.initials}
+                onChange={e => setEditForm(f => ({ ...f, initials: e.target.value.toUpperCase().slice(0, 3) }))}
+                placeholder="OKS"
+                maxLength={3}
+              />
+              <div className="text-[10px] text-text-3 mt-0.5">2–3 uppercase letters</div>
+            </div>
+
+            <div className="mb-1">
+              <label className={labelClass}>Avatar color</label>
+              <ColorPicker value={editForm.avatarColor} onChange={c => setEditForm(f => ({ ...f, avatarColor: c }))} />
+            </div>
+
+            {editError && (
+              <div className="mt-3 text-xs text-danger-text bg-danger-bg border border-danger-border rounded-md px-3 py-2">{editError}</div>
+            )}
+          </ModalBody>
+
+          <ModalFooter>
+            <Button onClick={() => setEditTarget(null)}>Cancel</Button>
+            <Button variant="primary" onClick={handleEdit} disabled={editMutation.isPending}>
+              {editMutation.isPending ? 'Saving…' : 'Save changes'}
             </Button>
           </ModalFooter>
         </Modal>

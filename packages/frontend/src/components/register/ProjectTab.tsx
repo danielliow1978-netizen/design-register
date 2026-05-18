@@ -4,9 +4,10 @@ interface ProjectTabProps {
   projects: Project[]
   selectedId: string | null
   onSelect: (id: string | null) => void
+  onAddProject?: () => void
 }
 
-export function ProjectTab({ projects, selectedId, onSelect }: ProjectTabProps) {
+export function ProjectTab({ projects, selectedId, onSelect, onAddProject }: ProjectTabProps) {
   const total = projects.reduce((a, p) => a + (p._count?.drawings ?? 0), 0)
 
   return (
@@ -45,6 +46,16 @@ export function ProjectTab({ projects, selectedId, onSelect }: ProjectTabProps) 
           </span>
         </button>
       ))}
+
+      {onAddProject && (
+        <button
+          onClick={onAddProject}
+          className="text-xs px-3 py-2.5 border-b-[3px] mb-[-1px] border-b-transparent text-text-3 hover:text-info-text hover:border-b-info-border transition-colors rounded-t-md whitespace-nowrap ml-1"
+          title="Add project"
+        >
+          + Add project
+        </button>
+      )}
     </div>
   )
 }

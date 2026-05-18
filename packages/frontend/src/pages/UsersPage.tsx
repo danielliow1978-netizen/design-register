@@ -11,28 +11,44 @@ import type { User } from '../types'
 
 type UserWithCount = User & { _count?: { drawingsAsDesigner: number } }
 
-const ROLE_LEVELS = ['DESIGNER', 'SENIOR_DESIGNER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN']
+const MANAGER_ROLES = ['DESIGN_MANAGER', 'ASSISTANT_DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
+
+const ROLE_LABELS: Record<string, string> = {
+  DRAFTER: 'Drafter',
+  SENIOR_DRAFTER: 'Senior Drafter',
+  DESIGNER: 'Designer',
+  SENIOR_DESIGNER: 'Senior Designer',
+  PROJECT_ENGINEER: 'Project Engineer',
+  QS_DEPARTMENT: 'QS Department',
+  ASSISTANT_DESIGN_MANAGER: 'Assistant Design Manager',
+  DESIGN_MANAGER: 'Design Manager',
+  PROJECT_MANAGER: 'Project Manager',
+  DEPARTMENT_HEAD: 'Department Head',
+  COO: 'COO',
+  CEO: 'CEO',
+  ADMIN: 'Admin',
+}
 
 function formatRole(role: string): string {
-  return role
-    .split('_')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
+  return ROLE_LABELS[role] ?? role.split('_').map(w => w.charAt(0) + w.slice(1).toLowerCase()).join(' ')
 }
 
 export default function UsersPage() {
   const queryClient = useQueryClient()
   const currentUser = useAuthStore(s => s.user)
-  const isManager = currentUser ? ROLE_LEVELS.indexOf(currentUser.role) >= 2 : false
+  const isManager = currentUser ? MANAGER_ROLES.includes(currentUser.role) : false
   const isAdmin = currentUser?.role === 'ADMIN'
 
   const [addOpen, setAddOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
 
-  const { data: users = [], isLoading } = useQuery<UserWithCount[]>({
+  const { data: allUsers = [], isLoading } = useQuery<UserWithCount[]>({
     queryKey: ['users'],
     queryFn: usersApi.list as () => Promise<UserWithCount[]>,
   })
+
+  // Exclude requestor-only accounts — they live in the Requestors tab
+  const users = allUsers.filter(u => !u.email.endsWith('@requestor.local'))
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
