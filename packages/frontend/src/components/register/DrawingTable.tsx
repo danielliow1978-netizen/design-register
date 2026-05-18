@@ -117,6 +117,7 @@ export function DrawingTable({
         <tbody>
           {drawings.map(drawing => {
             const isCompleted = drawing.status === 'COMPLETED'
+            const canAct = currentUserRole === 'ADMIN' || drawing.createdById === currentUserId
             const delay = drawing.delay ?? null
             const hasDelay = delay !== null && delay > 0
             const delayClass = delay === null
@@ -131,8 +132,7 @@ export function DrawingTable({
               <tr key={drawing.id} className="border-b border-border hover:bg-surface-2/50 transition-colors">
                 <td className="px-2 py-2 align-middle whitespace-nowrap">
                   {(() => {
-                    const canEdit = currentUserRole === 'ADMIN' || drawing.createdById === currentUserId
-                    if (!canEdit) return <span className="text-text-3 text-[10px]">—</span>
+                    if (!canAct) return <span className="text-text-3 text-[10px]">—</span>
                     return (
                       <div className="flex items-center gap-1">
                         <button
@@ -190,18 +190,20 @@ export function DrawingTable({
                 </td>
                 <td className="px-2.5 py-2 align-middle">{statusPill(drawing.status)}</td>
                 <td className="px-2.5 py-2 align-middle text-center whitespace-nowrap">
-                  {!isCompleted ? (
+                  {isCompleted ? (
+                    <Button variant="ghost" size="sm" className="opacity-50 cursor-default" disabled>
+                      ✓ Done
+                    </Button>
+                  ) : canAct ? (
                     <Button variant="success" size="sm" onClick={() => onComplete(drawing)}>
                       ✓ Complete
                     </Button>
                   ) : (
-                    <Button variant="ghost" size="sm" className="opacity-50 cursor-default" disabled>
-                      ✓ Done
-                    </Button>
+                    <span className="text-text-3 text-[10px]">—</span>
                   )}
                 </td>
 
-                {/* Reason of Delay — inline editable when delay > 0 */}
+                {/* Reason of Delay — inline editable (creator/admin only) when delay > 0 */}
                 <td className="px-2.5 py-2 align-middle">
                   {!hasDelay ? (
                     <span className="text-text-3">—</span>
@@ -230,7 +232,7 @@ export function DrawingTable({
                         title="Cancel"
                       >✕</button>
                     </div>
-                  ) : (
+                  ) : canAct ? (
                     <div
                       className="group flex items-center gap-1.5 cursor-pointer"
                       onClick={() => {
@@ -246,6 +248,10 @@ export function DrawingTable({
                       )}
                       <span className="opacity-0 group-hover:opacity-60 text-[10px] text-text-3 shrink-0">✎</span>
                     </div>
+                  ) : (
+                    <span className="text-warning-text text-[11px] leading-tight">
+                      {drawing.lateReasonDetail || <span className="text-text-3">—</span>}
+                    </span>
                   )}
                 </td>
               </tr>
