@@ -117,7 +117,7 @@ export function DrawingTable({
         <tbody>
           {drawings.map(drawing => {
             const isCompleted = drawing.status === 'COMPLETED'
-            const canAct = currentUserRole === 'ADMIN' || drawing.createdById === currentUserId
+            const canAct = currentUserRole === 'ADMIN' || drawing.designerId === currentUserId
             const delay = drawing.delay ?? null
             const hasDelay = delay !== null && delay > 0
             const delayClass = delay === null
