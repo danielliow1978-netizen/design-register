@@ -171,8 +171,8 @@ router.post('/', requireAuth, async (req: Request, res: Response, next: NextFunc
     const startDate = new Date(data.startDate)
     const endDate = new Date(data.endDate)
 
-    if (endDate <= startDate) {
-      return res.status(400).json({ error: 'endDate must be after startDate', code: 'INVALID_DATES' })
+    if (endDate < startDate) {
+      return res.status(400).json({ error: 'endDate cannot be before startDate', code: 'INVALID_DATES' })
     }
 
     // Derive initial status
