@@ -63,6 +63,7 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
   const [showAddProject, setShowAddProject] = useState(false)
   const [showManageProjects, setShowManageProjects] = useState(false)
   const [projectSearch, setProjectSearch] = useState('')
+  const [customDisciplineMode, setCustomDisciplineMode] = useState(false)
 
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: projectsApi.list })
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
@@ -228,8 +229,8 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
             <label className={labelClass}>Discipline *</label>
             {(() => {
               const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
-              const showCustom = !isKnown && formData.discipline !== ''
-              const selectVal = showCustom ? '__custom__' : formData.discipline
+              const showCustomInput = customDisciplineMode || (!isKnown && formData.discipline !== '')
+              const selectVal = showCustomInput ? '__custom__' : formData.discipline
 
               return (
                 <>
@@ -238,8 +239,10 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
                     value={selectVal}
                     onChange={e => {
                       if (e.target.value === '__custom__') {
+                        setCustomDisciplineMode(true)
                         update('discipline', '')
                       } else {
+                        setCustomDisciplineMode(false)
                         update('discipline', e.target.value)
                       }
                     }}
@@ -250,7 +253,7 @@ export function AddDrawingModal({ open, onClose, resumeDraft }: AddDrawingModalP
                     ))}
                     <option value="__custom__">✏ Custom…</option>
                   </select>
-                  {(selectVal === '__custom__' || showCustom) && (
+                  {showCustomInput && (
                     <input
                       className={inputClass + " mt-1"}
                       placeholder="Type discipline name…"

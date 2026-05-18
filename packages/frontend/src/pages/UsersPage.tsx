@@ -11,7 +11,17 @@ import type { User } from '../types'
 
 type UserWithCount = User & { _count?: { drawingsAsDesigner: number } }
 
+type SortField = 'fullName' | 'role' | 'discipline' | 'status' | 'drawings'
+type SortDir = 'asc' | 'desc'
+
 const MANAGER_ROLES = ['DESIGN_MANAGER', 'ASSISTANT_DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']
+
+const ROLE_ORDER: Record<string, number> = {
+  DRAFTER: 0, SENIOR_DRAFTER: 1, DESIGNER: 2, SENIOR_DESIGNER: 3,
+  PROJECT_ENGINEER: 4, QS_DEPARTMENT: 5, ASSISTANT_DESIGN_MANAGER: 6,
+  DESIGN_MANAGER: 7, PROJECT_MANAGER: 8, DEPARTMENT_HEAD: 9,
+  COO: 10, CEO: 11, ADMIN: 12,
+}
 
 const ROLE_LABELS: Record<string, string> = {
   DRAFTER: 'Drafter',
@@ -41,6 +51,17 @@ export default function UsersPage() {
 
   const [addOpen, setAddOpen] = useState(false)
   const [editUser, setEditUser] = useState<User | null>(null)
+  const [sortField, setSortField] = useState<SortField>('fullName')
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDir('asc')
+    }
+  }
 
   const { data: allUsers = [], isLoading } = useQuery<UserWithCount[]>({
     queryKey: ['users'],
@@ -48,7 +69,15 @@ export default function UsersPage() {
   })
 
   // Exclude requestor-only accounts — they live in the Requestors tab
-  const users = allUsers.filter(u => !u.email.endsWith('@requestor.local'))
+  const users = [...allUsers.filter(u => !u.email.endsWith('@requestor.local'))].sort((a, b) => {
+    let cmp = 0
+    if (sortField === 'fullName') cmp = a.fullName.localeCompare(b.fullName)
+    else if (sortField === 'role') cmp = (ROLE_ORDER[a.role] ?? 99) - (ROLE_ORDER[b.role] ?? 99)
+    else if (sortField === 'discipline') cmp = (a.discipline ?? '').localeCompare(b.discipline ?? '')
+    else if (sortField === 'status') cmp = (a.active === b.active ? 0 : a.active ? -1 : 1)
+    else if (sortField === 'drawings') cmp = ((a as UserWithCount)._count?.drawingsAsDesigner ?? 0) - ((b as UserWithCount)._count?.drawingsAsDesigner ?? 0)
+    return sortDir === 'asc' ? cmp : -cmp
+  })
 
   const toggleActiveMutation = useMutation({
     mutationFn: ({ id, active }: { id: string; active: boolean }) =>
@@ -84,11 +113,32 @@ export default function UsersPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border bg-surface-2">
-                  <th className="text-left px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Member</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Role</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Discipline</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Drawings</th>
+                  {([
+                    { field: 'fullName' as SortField, label: 'Member' },
+                    { field: 'role' as SortField, label: 'Role' },
+                    { field: 'discipline' as SortField, label: 'Discipline' },
+                    { field: 'status' as SortField, label: 'Status' },
+                    { field: 'drawings' as SortField, label: 'Drawings' },
+                  ]).map(({ field, label }) => {
+                    const isActive = sortField === field
+                    return (
+                      <th
+                        key={field}
+                        onClick={() => handleSort(field)}
+                        className={`text-left px-4 py-2.5 text-[10px] font-medium uppercase tracking-wide cursor-pointer select-none whitespace-nowrap transition-colors ${
+                          isActive ? 'bg-info-bg text-info-text' : 'text-text-2 hover:bg-info-bg hover:text-info-text'
+                        }`}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          {label}
+                          <span className="inline-flex flex-col" style={{ fontSize: 8, lineHeight: '7px' }}>
+                            <span className={isActive && sortDir === 'asc' ? 'text-info-text font-bold' : 'opacity-30'}>▲</span>
+                            <span className={isActive && sortDir === 'desc' ? 'text-info-text font-bold' : 'opacity-30'}>▼</span>
+                          </span>
+                        </span>
+                      </th>
+                    )
+                  })}
                   {(isManager || isAdmin) && (
                     <th className="text-right px-4 py-2.5 text-[10px] text-text-2 font-medium uppercase tracking-wide">Actions</th>
                   )}

@@ -49,9 +49,13 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
     drawing ? formFromDrawing(drawing) : { drawingNumber: '', projectId: '', drawingTitle: '', discipline: '', category: '', designerId: '', requestorId: '', notes: '' }
   )
   const [error, setError] = useState('')
+  const [customDisciplineMode, setCustomDisciplineMode] = useState(false)
 
   useEffect(() => {
-    if (drawing) setFormData(formFromDrawing(drawing))
+    if (drawing) {
+      setFormData(formFromDrawing(drawing))
+      setCustomDisciplineMode(false)
+    }
     setError('')
   }, [drawing])
 
@@ -158,8 +162,8 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
             <label className={labelClass}>Discipline *</label>
             {(() => {
               const isKnown = DISCIPLINES.includes(formData.discipline as typeof DISCIPLINES[number])
-              const showCustom = !isKnown && formData.discipline !== ''
-              const selectVal = showCustom ? '__custom__' : formData.discipline
+              const showCustomInput = customDisciplineMode || (!isKnown && formData.discipline !== '')
+              const selectVal = showCustomInput ? '__custom__' : formData.discipline
 
               return (
                 <>
@@ -168,8 +172,10 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
                     value={selectVal}
                     onChange={e => {
                       if (e.target.value === '__custom__') {
+                        setCustomDisciplineMode(true)
                         update('discipline', '')
                       } else {
+                        setCustomDisciplineMode(false)
                         update('discipline', e.target.value)
                       }
                     }}
@@ -180,7 +186,7 @@ export function EditDrawingModal({ open, drawing, onClose }: EditDrawingModalPro
                     ))}
                     <option value="__custom__">✏ Custom…</option>
                   </select>
-                  {(selectVal === '__custom__' || showCustom) && (
+                  {showCustomInput && (
                     <input
                       className={inputClass + " mt-1"}
                       placeholder="Type discipline name…"
