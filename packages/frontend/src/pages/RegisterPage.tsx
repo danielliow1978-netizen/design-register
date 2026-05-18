@@ -203,131 +203,157 @@ export default function RegisterPage() {
           )}
         </div>
 
-        {/* Tabs */}
-        {view === 'designer' ? (
-          <DesignerTab
-            designers={designers}
-            counts={designerCounts}
-            selectedId={selectedDesignerId}
-            onSelect={setSelectedDesignerId}
-            allDrawings={allDrawings}
-            gridView={designerGridView}
-          />
-        ) : (
-          <ProjectTab
-            projects={projects}
-            selectedId={selectedProjectId}
-            onSelect={setSelectedProjectId}
-            onAddProject={
-              ['DESIGN_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN'].includes(user?.role ?? '')
-                ? () => setAddProjectOpen(true)
-                : undefined
-            }
-          />
-        )}
+        {/* ── Designer view: top-down layout ── */}
+        {view === 'designer' && (
+          <>
+            <DesignerTab
+              designers={designers}
+              counts={designerCounts}
+              selectedId={selectedDesignerId}
+              onSelect={setSelectedDesignerId}
+              allDrawings={allDrawings}
+              gridView={designerGridView}
+            />
 
-        {/* Info banner */}
-        {view === 'designer' && selectedDesigner && (
-          <div className="flex items-center justify-between bg-info-bg border border-info-border rounded-md px-4 py-3 mb-3.5">
-            <div className="flex items-center gap-3">
-              <Avatar initials={selectedDesigner.initials} color={selectedDesigner.avatarColor} size="lg" />
-              <div>
-                <div className="font-medium text-sm text-info-text">{selectedDesigner.fullName}'s drawing register</div>
-                <div className="text-[11px] text-text-2 mt-0.5">{selectedDesigner.discipline?.replace('_', ' ')} · {selectedDesigner.role.replace('_', ' ')} · {designerCounts[selectedDesigner.id] ?? 0} total drawings</div>
-              </div>
-            </div>
-            <div className="flex gap-4 text-[11px]">
-              {[
-                { label: 'In progress', count: statusCounts.IN_PROGRESS, color: 'text-info-text' },
-                { label: 'Completed', count: statusCounts.COMPLETED, color: 'text-success-text' },
-                { label: 'Overdue', count: statusCounts.OVERDUE, color: 'text-danger-text' },
-              ].map(stat => (
-                <div key={stat.label} className="text-center">
-                  <div className="text-text-3">{stat.label}</div>
-                  <div className={`text-base font-medium mt-0.5 ${stat.color}`}>{stat.count}</div>
+            {selectedDesigner && (
+              <div className="flex items-center justify-between bg-info-bg border border-info-border rounded-md px-4 py-3 mb-3.5">
+                <div className="flex items-center gap-3">
+                  <Avatar initials={selectedDesigner.initials} color={selectedDesigner.avatarColor} size="lg" />
+                  <div>
+                    <div className="font-medium text-sm text-info-text">{selectedDesigner.fullName}'s drawing register</div>
+                    <div className="text-[11px] text-text-2 mt-0.5">{selectedDesigner.discipline?.replace('_', ' ')} · {selectedDesigner.role.replace('_', ' ')} · {designerCounts[selectedDesigner.id] ?? 0} total drawings</div>
+                  </div>
                 </div>
-              ))}
+                <div className="flex gap-4 text-[11px]">
+                  {[
+                    { label: 'In progress', count: statusCounts.IN_PROGRESS, color: 'text-info-text' },
+                    { label: 'Completed', count: statusCounts.COMPLETED, color: 'text-success-text' },
+                    { label: 'Overdue', count: statusCounts.OVERDUE, color: 'text-danger-text' },
+                  ].map(stat => (
+                    <div key={stat.label} className="text-center">
+                      <div className="text-text-3">{stat.label}</div>
+                      <div className={`text-base font-medium mt-0.5 ${stat.color}`}>{stat.count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Filter bar */}
+            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap">
+                {STATUS_FILTERS.map(f => (
+                  <button key={f} onClick={() => setStatusFilter(f)}
+                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
+                    {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
+                  className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text placeholder-text-3 w-48 focus:outline-none focus:border-info-border" />
+                <ExportMenu onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)} onExcel={() => exportTableToExcel(drawings, filename)} onCsv={() => exportTableToCsv(drawings, filename)} />
+                <Button variant="primary" onClick={() => setAddOpen(true)}>+ Add drawing</Button>
+              </div>
+            </div>
+
+            {sortColumns.length > 0 && (
+              <div className="flex items-center gap-2 bg-info-bg border border-info-border rounded-md px-2.5 py-1.5 mb-2.5 text-[11px] text-info-text flex-wrap">
+                <span>Sorted by:</span>
+                {sortColumns.map((col, i) => (
+                  <span key={col.field} className="inline-flex items-center gap-1 bg-surface border border-info-border rounded px-2 py-0.5">
+                    <span className="bg-info-text text-white text-[8px] rounded-full px-1 font-medium">{i + 1}</span>
+                    <span>{col.field}</span>
+                    <span className="font-medium">{col.direction === 'asc' ? '▲ asc' : '▼ desc'}</span>
+                    <button onClick={() => removeSort(col.field)} className="opacity-60 hover:opacity-100 ml-1 text-xs">✕</button>
+                  </span>
+                ))}
+                <span className="ml-auto text-[11px] opacity-70">💡 Shift+click to add secondary sort</span>
+              </div>
+            )}
+
+            <DrawingTable drawings={drawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
+              onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
+              onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
+              view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
+          </>
+        )}
+
+        {/* ── Project view: side-by-side layout ── */}
+        {view === 'project' && (
+          <div className="flex gap-4 items-start">
+
+            {/* Section A — left project panel (fixed width) */}
+            <div className="w-72 shrink-0">
+              <ProjectTab
+                projects={projects}
+                selectedId={selectedProjectId}
+                onSelect={setSelectedProjectId}
+                onAddProject={
+                  ['DESIGN_MANAGER', 'DEPARTMENT_HEAD', 'ADMIN'].includes(user?.role ?? '')
+                    ? () => setAddProjectOpen(true)
+                    : undefined
+                }
+              />
+            </div>
+
+            {/* Section B — right content */}
+            <div className="flex-1 min-w-0">
+              {/* Project info banner */}
+              {selectedProject && (
+                <div className="flex items-center justify-between bg-teal-bg border border-teal-text/30 rounded-md px-4 py-3 mb-3.5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-[38px] h-[38px] rounded-md bg-surface flex items-center justify-center text-xl">
+                      {selectedProject.iconEmoji}
+                    </div>
+                    <div>
+                      <div className="font-medium text-sm text-teal-text">{selectedProject.code} — {selectedProject.name}</div>
+                      <div className="text-[11px] text-text-2 mt-0.5">{selectedProject.client} · {selectedProject.contractType}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Filter bar */}
+              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap">
+                  {STATUS_FILTERS.map(f => (
+                    <button key={f} onClick={() => setStatusFilter(f)}
+                      className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
+                      {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
+                    className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text placeholder-text-3 w-40 focus:outline-none focus:border-info-border" />
+                  <ExportMenu onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)} onExcel={() => exportTableToExcel(drawings, filename)} onCsv={() => exportTableToCsv(drawings, filename)} />
+                  <Button variant="primary" onClick={() => setAddOpen(true)}>+ Add drawing</Button>
+                </div>
+              </div>
+
+              {sortColumns.length > 0 && (
+                <div className="flex items-center gap-2 bg-info-bg border border-info-border rounded-md px-2.5 py-1.5 mb-2.5 text-[11px] text-info-text flex-wrap">
+                  <span>Sorted by:</span>
+                  {sortColumns.map((col, i) => (
+                    <span key={col.field} className="inline-flex items-center gap-1 bg-surface border border-info-border rounded px-2 py-0.5">
+                      <span className="bg-info-text text-white text-[8px] rounded-full px-1 font-medium">{i + 1}</span>
+                      <span>{col.field}</span>
+                      <span className="font-medium">{col.direction === 'asc' ? '▲ asc' : '▼ desc'}</span>
+                      <button onClick={() => removeSort(col.field)} className="opacity-60 hover:opacity-100 ml-1 text-xs">✕</button>
+                    </span>
+                  ))}
+                  <span className="ml-auto text-[11px] opacity-70">💡 Shift+click to add secondary sort</span>
+                </div>
+              )}
+
+              <DrawingTable drawings={drawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
+                onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
+                onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
+                view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
             </div>
           </div>
         )}
-
-        {view === 'project' && selectedProject && (
-          <div className="flex items-center justify-between bg-teal-bg border border-teal-text/30 rounded-md px-4 py-3 mb-3.5">
-            <div className="flex items-center gap-3">
-              <div className="w-[38px] h-[38px] rounded-md bg-surface flex items-center justify-center text-xl">
-                {selectedProject.iconEmoji}
-              </div>
-              <div>
-                <div className="font-medium text-sm text-teal-text">{selectedProject.code} — {selectedProject.name}</div>
-                <div className="text-[11px] text-text-2 mt-0.5">{selectedProject.client} · {selectedProject.contractType}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Filter bar */}
-        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-          <div className="flex gap-1.5 flex-wrap">
-            {STATUS_FILTERS.map(f => (
-              <button
-                key={f}
-                onClick={() => setStatusFilter(f)}
-                className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${
-                  statusFilter === f
-                    ? 'border-info-border bg-info-bg text-info-text'
-                    : 'border-border text-text-2 hover:border-border-strong'
-                }`}
-              >
-                {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="🔍 Search..."
-              className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text placeholder-text-3 w-48 focus:outline-none focus:border-info-border"
-            />
-            <ExportMenu
-              onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)}
-              onExcel={() => exportTableToExcel(drawings, filename)}
-              onCsv={() => exportTableToCsv(drawings, filename)}
-            />
-            <Button variant="primary" onClick={() => setAddOpen(true)}>+ Add drawing</Button>
-          </div>
-        </div>
-
-        {/* Active sort bar */}
-        {sortColumns.length > 0 && (
-          <div className="flex items-center gap-2 bg-info-bg border border-info-border rounded-md px-2.5 py-1.5 mb-2.5 text-[11px] text-info-text flex-wrap">
-            <span>Sorted by:</span>
-            {sortColumns.map((col, i) => (
-              <span key={col.field} className="inline-flex items-center gap-1 bg-surface border border-info-border rounded px-2 py-0.5">
-                <span className="bg-info-text text-white text-[8px] rounded-full px-1 font-medium">{i + 1}</span>
-                <span>{col.field}</span>
-                <span className="font-medium">{col.direction === 'asc' ? '▲ asc' : '▼ desc'}</span>
-                <button onClick={() => removeSort(col.field)} className="opacity-60 hover:opacity-100 ml-1 text-xs">✕</button>
-              </span>
-            ))}
-            <span className="ml-auto text-[11px] opacity-70">💡 Shift+click to add secondary sort</span>
-          </div>
-        )}
-
-        {/* Table */}
-        <DrawingTable
-          drawings={drawings}
-          sortColumns={sortColumns}
-          onHeaderClick={handleHeaderClick}
-          onComplete={handleComplete}
-          onEdit={d => setEditDrawing(d)}
-          onDelete={d => setDeleteDrawing(d)}
-          onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
-          view={view}
-          isLoading={drawingsLoading}
-          currentUserId={user?.id}
-          currentUserRole={user?.role}
-        />
 
         {/* Modals */}
         <AddDrawingModal open={addOpen} onClose={() => setAddOpen(false)} />
