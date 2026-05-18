@@ -119,7 +119,6 @@ export function DrawingTable({
             const isCompleted = drawing.status === 'COMPLETED'
             const canAct = currentUserRole === 'ADMIN' || drawing.designerId === currentUserId
             const delay = drawing.delay ?? null
-            const hasDelay = delay !== null && delay > 0
             const delayClass = delay === null
               ? 'text-text-3'
               : delay > 0
@@ -203,11 +202,9 @@ export function DrawingTable({
                   )}
                 </td>
 
-                {/* Reason of Delay — inline editable (creator/admin only) when delay > 0 */}
+                {/* Reason of Delay — editable by designer/admin; read-only for others */}
                 <td className="px-2.5 py-2 align-middle">
-                  {!hasDelay ? (
-                    <span className="text-text-3">—</span>
-                  ) : isEditingReason ? (
+                  {isEditingReason ? (
                     <div className="flex items-center gap-1">
                       <input
                         autoFocus
@@ -249,8 +246,10 @@ export function DrawingTable({
                       <span className="opacity-0 group-hover:opacity-60 text-[10px] text-text-3 shrink-0">✎</span>
                     </div>
                   ) : (
-                    <span className="text-warning-text text-[11px] leading-tight">
-                      {drawing.lateReasonDetail || <span className="text-text-3">—</span>}
+                    <span className="text-[11px] leading-tight">
+                      {drawing.lateReasonDetail
+                        ? <span className="text-warning-text">{drawing.lateReasonDetail}</span>
+                        : <span className="text-text-3">—</span>}
                     </span>
                   )}
                 </td>
