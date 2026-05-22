@@ -5,6 +5,7 @@ import { Button } from '../ui/Button'
 import { formatSGTShort } from '../../lib/dates'
 import { drawingsApi } from '../../api/drawings'
 import { useQueryClient } from '@tanstack/react-query'
+import { ApprovalModal } from '../../modals/ApprovalModal'
 
 interface DrawingTableProps {
   drawings: Drawing[]
@@ -46,6 +47,7 @@ export function DrawingTable({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetId = useRef<string | null>(null)
+  const [approvalTarget, setApprovalTarget] = useState<{ drawing: Drawing; action: 'APPROVED' | 'REJECTED' } | null>(null)
 
   const handlePdfUpload = async (file: File) => {
     const id = uploadTargetId.current
@@ -148,7 +150,7 @@ export function DrawingTable({
           <button onClick={() => setUploadError(null)} className="ml-2 underline">dismiss</button>
         </div>
       )}
-      <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1500 }}>
+      <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1700 }}>
         <thead>
           <tr>
             <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
@@ -156,6 +158,12 @@ export function DrawingTable({
             </th>
             <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
               PDF
+            </th>
+            <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-28">
+              Approval
+            </th>
+            <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-24">
+              Approval Date
             </th>
             {view === 'project' && (
               <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
@@ -254,6 +262,45 @@ export function DrawingTable({
                   ) : (
                     <span className="text-text-3 text-[10px]">—</span>
                   )}
+                </td>
+
+                {/* Approval column */}
+                <td className="px-2 py-2 align-middle text-center whitespace-nowrap">
+                  {!isCompleted ? (
+                    <span className="text-text-3 text-[10px]">—</span>
+                  ) : drawing.approvalStatus === 'APPROVED' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-bg text-success-text text-[10px] font-medium">
+                      ✓ Approved
+                    </span>
+                  ) : drawing.approvalStatus === 'REJECTED' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-bg text-danger-text text-[10px] font-medium">
+                      ✕ Rejected
+                    </span>
+                  ) : currentUserRole === 'DESIGN_MANAGER' ? (
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        onClick={() => setApprovalTarget({ drawing, action: 'APPROVED' })}
+                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-success-bg text-success-text hover:opacity-80 transition-opacity"
+                        title="Approve drawing"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        onClick={() => setApprovalTarget({ drawing, action: 'REJECTED' })}
+                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-danger-bg text-danger-text hover:opacity-80 transition-opacity"
+                        title="Reject drawing"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-text-3 text-[10px] italic">Pending</span>
+                  )}
+                </td>
+
+                {/* Approval Date column */}
+                <td className="px-2 py-2 align-middle text-center whitespace-nowrap text-text-2 text-[11px]">
+                  {drawing.approvalDate ? formatSGTShort(drawing.approvalDate) : <span className="text-text-3">—</span>}
                 </td>
 
                 {view === 'project' && (
@@ -362,6 +409,16 @@ export function DrawingTable({
           })}
         </tbody>
       </table>
+      <ApprovalModal
+        open={approvalTarget !== null}
+        drawing={approvalTarget?.drawing ?? null}
+        action={approvalTarget?.action ?? 'APPROVED'}
+        onClose={() => setApprovalTarget(null)}
+        onSuccess={() => {
+          setApprovalTarget(null)
+          queryClient.invalidateQueries({ queryKey: ['drawings'] })
+        }}
+      />
     </div>
   )
 }
