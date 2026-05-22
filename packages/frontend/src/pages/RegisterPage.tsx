@@ -39,6 +39,7 @@ export default function RegisterPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
   const [search, setSearch] = useState('')
+  const [hideComplete, setHideComplete] = useState(false)
 
   // Sort
   const { sortColumns, handleHeaderClick, removeSort, sortString } = useSort('register', [
@@ -162,6 +163,16 @@ export default function RegisterPage() {
   const selectedDesigner = designers.find(d => d.id === selectedDesignerId)
   const selectedProject = projects.find(p => p.id === selectedProjectId)
 
+  // Hide-complete filter: hides COMPLETED CONSTRUCTION/AS-BUILT and COMPLETED APPROVED SHOP/TENDER
+  const visibleDrawings = hideComplete
+    ? drawings.filter(d => {
+        if (d.status !== 'COMPLETED') return true
+        if (['CONSTRUCTION', 'AS_BUILT'].includes(d.category)) return false
+        if (['SHOP', 'TENDER'].includes(d.category) && d.approvalStatus === 'APPROVED') return false
+        return true
+      })
+    : drawings
+
   // Export handlers
   const filename = `DesignRegister_${view === 'designer' ? 'Designer' : 'Project'}_${formatSGT(new Date(), 'yyyy-MM-dd')}`
 
@@ -241,13 +252,19 @@ export default function RegisterPage() {
 
             {/* Filter bar */}
             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-              <div className="flex gap-1.5 flex-wrap">
+              <div className="flex gap-1.5 flex-wrap items-center">
                 {STATUS_FILTERS.map(f => (
                   <button key={f} onClick={() => setStatusFilter(f)}
                     className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
                     {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
                   </button>
                 ))}
+                <button
+                  onClick={() => setHideComplete(h => !h)}
+                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                >
+                  {hideComplete ? '👁 Show completed' : '🙈 Hide completed'}
+                </button>
               </div>
               <div className="flex items-center gap-1.5">
                 <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
@@ -272,7 +289,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            <DrawingTable drawings={drawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
+            <DrawingTable drawings={visibleDrawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
               onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
               onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
               view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
@@ -316,13 +333,19 @@ export default function RegisterPage() {
 
               {/* Filter bar */}
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <div className="flex gap-1.5 flex-wrap">
+                <div className="flex gap-1.5 flex-wrap items-center">
                   {STATUS_FILTERS.map(f => (
                     <button key={f} onClick={() => setStatusFilter(f)}
                       className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
                       {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
                     </button>
                   ))}
+                  <button
+                    onClick={() => setHideComplete(h => !h)}
+                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                  >
+                    {hideComplete ? '👁 Show completed' : '🙈 Hide completed'}
+                  </button>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
@@ -347,7 +370,7 @@ export default function RegisterPage() {
                 </div>
               )}
 
-              <DrawingTable drawings={drawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
+              <DrawingTable drawings={visibleDrawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
                 onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
                 onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
                 view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
