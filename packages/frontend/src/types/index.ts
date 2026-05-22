@@ -11,7 +11,7 @@ export type DrawingCategory = 'TENDER' | 'SHOP' | 'CONSTRUCTION' | 'AS_BUILT'
 export type ContractType = 'EPC' | 'EPCM'
 export type ProjectStatus = 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED'
 export type LateReason = 'CLIENT_SCOPE_CHANGE' | 'CLIENT_DELAY' | 'SITE_CHANGE' | 'VENDOR_DELAY' | 'SICK_LEAVE' | 'AWAITING_OTHER_DISCIPLINE' | 'SOFTWARE_ISSUE' | 'OTHER'
-export type AuditAction = 'CREATED' | 'EDITED' | 'COMPLETED' | 'COMPLETED_LATE' | 'DELETED' | 'RESTORED' | 'PERMANENTLY_DELETED' | 'LOGIN' | 'LOGOUT'
+export type AuditAction = 'CREATED' | 'EDITED' | 'COMPLETED' | 'COMPLETED_LATE' | 'DELETED' | 'RESTORED' | 'PERMANENTLY_DELETED' | 'LOGIN' | 'LOGOUT' | 'APPROVED' | 'REJECTED'
 export type ThemeMode = 'light' | 'dark' | 'auto'
 export type PdfFormat = 'a4-portrait' | 'a4-landscape' | 'letter-landscape'
 export type AvatarColor = 'info' | 'success' | 'warning' | 'danger' | 'purple' | 'teal' | 'neutral'
@@ -68,6 +68,10 @@ export interface Drawing {
   lateReasonDetail?: string
   notes?: string
   pdfUrl?: string | null
+  approvalStatus?: 'APPROVED' | 'REJECTED' | null
+  approvalComment?: string | null
+  approvalDate?: string | null
+  approvedById?: string | null
   status: DrawingStatus
   isDeleted: boolean
   deletedAt?: string

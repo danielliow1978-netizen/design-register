@@ -34,4 +34,6 @@ export const drawingsApi = {
   },
   deletePdf: (id: string) =>
     apiClient.delete<{ drawing: Drawing }>(`/drawings/${id}/pdf`).then(r => r.data.drawing),
+  approve: (id: string, payload: { status: 'APPROVED' | 'REJECTED'; comment?: string }) =>
+    apiClient.post<{ drawing: Drawing }>(`/drawings/${id}/approve`, payload).then(r => r.data.drawing),
 }
