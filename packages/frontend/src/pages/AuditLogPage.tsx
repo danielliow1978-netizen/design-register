@@ -18,6 +18,8 @@ const ACTION_ICONS: Record<AuditAction, string> = {
   PERMANENTLY_DELETED: '💀',
   LOGIN: '🔑',
   LOGOUT: '🚪',
+  APPROVED: '✅',
+  REJECTED: '❌',
 }
 
 const ACTION_COLORS: Record<AuditAction, string> = {
@@ -30,11 +32,13 @@ const ACTION_COLORS: Record<AuditAction, string> = {
   PERMANENTLY_DELETED: 'text-danger-text bg-danger-bg',
   LOGIN: 'text-neutral-500 bg-surface-2',
   LOGOUT: 'text-neutral-500 bg-surface-2',
+  APPROVED: 'text-success-text bg-success-bg',
+  REJECTED: 'text-danger-text bg-danger-bg',
 }
 
 const AUDIT_ACTIONS: AuditAction[] = [
   'CREATED', 'EDITED', 'COMPLETED', 'COMPLETED_LATE', 'DELETED',
-  'RESTORED', 'PERMANENTLY_DELETED', 'LOGIN', 'LOGOUT',
+  'RESTORED', 'PERMANENTLY_DELETED', 'LOGIN', 'LOGOUT', 'APPROVED', 'REJECTED',
 ]
 
 const PAGE_SIZE = 50
