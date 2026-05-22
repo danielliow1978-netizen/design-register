@@ -14,10 +14,10 @@ const STORAGE_BUCKET = 'drawing-pdfs'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-// ── Multer: store file in memory (max 20 MB, PDF only) ────────────────────────
+// ── Multer: store file in memory (max 50 MB, PDF only) ────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === 'application/pdf') cb(null, true)
     else cb(new Error('Only PDF files are allowed'))
