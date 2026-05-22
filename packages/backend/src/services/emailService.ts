@@ -25,6 +25,15 @@ function replace(template: string, tokens: Record<string, string>): string {
   return result
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function formatSGT(date: Date): string {
   const sgt = toZonedTime(date, 'Asia/Singapore')
   return format(sgt, 'dd MMM yyyy')
@@ -276,24 +285,29 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
 
   for (const recipient of unique) {
     const html = replace(template, {
-      RECIPIENT_NAME: recipient.name.split(' ')[0],
-      DRAWING_NUMBER: drawingNumber,
-      DRAWING_TITLE: drawingTitle,
-      PROJECT_NAME: projectName,
-      STATUS: statusLabel,
-      STATUS_ICON: statusIcon,
-      STATUS_COLOR: statusColor,
-      STATUS_BG: statusBg,
-      COMMENT: commentText,
-      APPROVER_NAME: approverName,
-      APPROVAL_DATE: formattedDate,
+      RECIPIENT_NAME: escapeHtml(recipient.name.split(' ')[0] || recipient.name || 'there'),
+      DRAWING_NUMBER: escapeHtml(drawingNumber),
+      DRAWING_TITLE: escapeHtml(drawingTitle),
+      PROJECT_NAME: escapeHtml(projectName),
+      STATUS: statusLabel,               // derived from enum — safe
+      STATUS_ICON: statusIcon,           // hardcoded emoji — safe
+      STATUS_COLOR: statusColor,         // hardcoded hex — safe
+      STATUS_BG: statusBg,               // hardcoded hex — safe
+      COMMENT: escapeHtml(commentText),
+      APPROVER_NAME: escapeHtml(approverName),
+      APPROVAL_DATE: formattedDate,      // formatted date string — safe
     })
 
-    await resend.emails.send({
-      from: process.env.EMAIL_FROM || 'noreply@designregister.com',
-      to: recipient.email,
-      subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
-      html,
-    })
+    try {
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM || 'noreply@designregister.com',
+        to: recipient.email,
+        subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
+        html,
+      })
+      console.log(`[email] Approval notification sent to ${recipient.email}`)
+    } catch (err) {
+      console.error(`[email] Failed to send approval notification to ${recipient.email}:`, err)
+    }
   }
 }
