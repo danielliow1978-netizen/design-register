@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
-import { requireAuth, canDeleteDrawing } from '../middleware/auth'
+import { requireAuth, requireRole, canDeleteDrawing } from '../middleware/auth'
 import { createError } from '../middleware/errorHandler'
 
 // ── Supabase Storage client ───────────────────────────────────────────────────
@@ -49,6 +49,10 @@ const drawingSelect = {
   notes: true,
   status: true,
   pdfUrl: true,
+  approvalStatus: true,
+  approvalComment: true,
+  approvalDate: true,
+  approvedById: true,
   isDeleted: true,
   deletedAt: true,
   deletedById: true,
@@ -113,6 +117,11 @@ const completeSchema = z.object({
 const deleteSchema = z.object({
   password: z.string().min(1),
   reason: z.string().min(1).max(500),
+})
+
+const approveSchema = z.object({
+  status: z.enum(['APPROVED', 'REJECTED']),
+  comment: z.string().max(1000).optional(),
 })
 
 // ── GET /api/drawings ────────────────────────────────────────────────────────
@@ -515,6 +524,82 @@ router.delete('/:id/pdf', requireAuth, async (req: Request, res: Response, next:
     })
 
     return res.json({ drawing: { ...updated, ...computeDurationAndDelay(updated) } })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// TODO: replaced by emailService import in Task 3
+const sendApprovalEmail = async (_params: unknown): Promise<void> => { /* replaced in Task 3 */ }
+
+// ── POST /api/drawings/:id/approve ───────────────────────────────────────────
+router.post('/:id/approve', requireAuth, requireRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+    const { status, comment } = approveSchema.parse(req.body)
+
+    const drawing = await prisma.drawing.findUnique({
+      where: { id },
+      select: {
+        id: true, status: true, isDeleted: true,
+        drawingNumber: true, drawingTitle: true,
+        project: { select: { name: true } },
+        designer: { select: { id: true, fullName: true, email: true } },
+      },
+    })
+
+    if (!drawing || drawing.isDeleted) {
+      return res.status(404).json({ error: 'Drawing not found', code: 'NOT_FOUND' })
+    }
+    if (drawing.status !== 'COMPLETED') {
+      return res.status(400).json({ error: 'Only completed drawings can be approved or rejected', code: 'NOT_COMPLETED' })
+    }
+
+    const now = new Date()
+
+    const updated = await prisma.drawing.update({
+      where: { id },
+      data: {
+        approvalStatus: status,
+        approvalComment: comment ?? null,
+        approvalDate: now,
+        approvedById: req.user!.id,
+      },
+      select: drawingSelect,
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: status,
+        drawingId: id,
+        details: JSON.stringify({
+          drawingNumber: drawing.drawingNumber,
+          drawingTitle: drawing.drawingTitle,
+          status,
+          comment: comment ?? null,
+          approvedBy: req.user!.fullName,
+        }),
+        ipAddress: req.ip,
+      },
+    })
+
+    // Fire-and-forget — do not await
+    sendApprovalEmail({
+      drawingNumber: drawing.drawingNumber,
+      drawingTitle: drawing.drawingTitle,
+      projectName: drawing.project.name,
+      status,
+      comment: comment ?? null,
+      designerEmail: drawing.designer.email,
+      designerName: drawing.designer.fullName,
+      approverEmail: req.user!.email,
+      approverName: req.user!.fullName,
+      approvalDate: now,
+    }).catch(err => console.error('[email] approval notification failed:', err))
+
+    const { duration, delay } = computeDurationAndDelay(updated as Parameters<typeof computeDurationAndDelay>[0])
+    return res.json({ drawing: { ...updated, duration, delay } })
   } catch (err) {
     next(err)
   }
