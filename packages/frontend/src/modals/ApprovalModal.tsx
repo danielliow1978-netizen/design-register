@@ -9,7 +9,7 @@ interface ApprovalModalProps {
   drawing: Drawing | null
   action: 'APPROVED' | 'REJECTED'
   onClose: () => void
-  onSuccess: (updated: Drawing) => void
+  onSuccess: () => void
 }
 
 export function ApprovalModal({ open, drawing, action, onClose, onSuccess }: ApprovalModalProps) {
@@ -35,12 +35,12 @@ export function ApprovalModal({ open, drawing, action, onClose, onSuccess }: App
     setIsLoading(true)
     setError(null)
     try {
-      const updated = await drawingsApi.approve(drawing.id, {
+      await drawingsApi.approve(drawing.id, {
         status: action,
         comment: comment.trim() || undefined,
       })
       setComment('')
-      onSuccess(updated)
+      onSuccess()
     } catch (err: unknown) {
       const apiErr = err as { response?: { data?: { error?: string } } }
       setError(apiErr.response?.data?.error || 'Something went wrong. Please try again.')
