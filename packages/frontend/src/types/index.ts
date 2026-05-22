@@ -67,6 +67,7 @@ export interface Drawing {
   lateReason?: LateReason
   lateReasonDetail?: string
   notes?: string
+  pdfUrl?: string | null
   status: DrawingStatus
   isDeleted: boolean
   deletedAt?: string

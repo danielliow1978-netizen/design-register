@@ -22,4 +22,16 @@ export const drawingsApi = {
     apiClient.post<{ drawing: Drawing }>(`/drawings/${id}/complete`, payload || {}).then(r => r.data.drawing),
   softDelete: (id: string, password: string, reason: string) =>
     apiClient.delete<{ message: string }>(`/drawings/${id}`, { data: { password, reason } }).then(r => r.data),
+  uploadPdf: (id: string, file: File, onProgress?: (pct: number) => void) => {
+    const form = new FormData()
+    form.append('pdf', file)
+    return apiClient.post<{ drawing: Drawing }>(`/drawings/${id}/upload`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: e => {
+        if (onProgress && e.total) onProgress(Math.round((e.loaded * 100) / e.total))
+      },
+    }).then(r => r.data.drawing)
+  },
+  deletePdf: (id: string) =>
+    apiClient.delete<{ drawing: Drawing }>(`/drawings/${id}/pdf`).then(r => r.data.drawing),
 }

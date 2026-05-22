@@ -87,6 +87,8 @@ model Drawing {
   notes                String?
   status               String    @default("IN_PROGRESS")
 
+  pdfUrl               String?
+
   isDeleted            Boolean   @default(false)
   deletedAt            DateTime?
   deletedById          String?

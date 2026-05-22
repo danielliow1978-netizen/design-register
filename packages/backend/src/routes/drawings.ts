@@ -2,8 +2,27 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
+import multer from 'multer'
+import { createClient } from '@supabase/supabase-js'
 import { requireAuth, canDeleteDrawing } from '../middleware/auth'
 import { createError } from '../middleware/errorHandler'
+
+// ── Supabase Storage client ───────────────────────────────────────────────────
+const SUPABASE_URL = process.env.SUPABASE_URL || `https://zkhdbpsesuzdreinnjxn.supabase.co`
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || ''
+const STORAGE_BUCKET = 'drawing-pdfs'
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+// ── Multer: store file in memory (max 20 MB, PDF only) ────────────────────────
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true)
+    else cb(new Error('Only PDF files are allowed'))
+  },
+})
 
 const router = Router()
 const prisma = new PrismaClient()
@@ -29,6 +48,7 @@ const drawingSelect = {
   lateReasonDetail: true,
   notes: true,
   status: true,
+  pdfUrl: true,
   isDeleted: true,
   deletedAt: true,
   deletedById: true,
@@ -394,6 +414,107 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response, next: Nex
     })
 
     return res.json({ message: 'Drawing moved to recycle bin' })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── POST /api/drawings/:id/upload ────────────────────────────────────────────
+router.post('/:id/upload', requireAuth, upload.single('pdf'), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!SUPABASE_SERVICE_KEY) {
+      return res.status(503).json({ error: 'PDF upload not configured (missing SUPABASE_SERVICE_KEY)', code: 'NOT_CONFIGURED' })
+    }
+
+    const drawing = await prisma.drawing.findUnique({ where: { id: req.params.id } })
+    if (!drawing || drawing.isDeleted) {
+      return res.status(404).json({ error: 'Drawing not found', code: 'NOT_FOUND' })
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No PDF file provided', code: 'NO_FILE' })
+    }
+
+    // If there's an existing PDF, remove it first
+    if (drawing.pdfUrl) {
+      const oldPath = drawing.pdfUrl.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`)[1]
+      if (oldPath) {
+        await supabase.storage.from(STORAGE_BUCKET).remove([decodeURIComponent(oldPath)])
+      }
+    }
+
+    // Upload to Supabase Storage: drawings/<drawingId>/<timestamp>-<filename>
+    const timestamp = Date.now()
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const storagePath = `drawings/${req.params.id}/${timestamp}-${safeName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(storagePath, req.file.buffer, {
+        contentType: 'application/pdf',
+        upsert: false,
+      })
+
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError)
+      return res.status(500).json({ error: 'Failed to upload PDF', code: 'UPLOAD_FAILED', detail: uploadError.message })
+    }
+
+    // Build public URL
+    const { data: urlData } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(storagePath)
+    const pdfUrl = urlData.publicUrl
+
+    const updated = await prisma.drawing.update({
+      where: { id: req.params.id },
+      data: { pdfUrl },
+      select: drawingSelect,
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'EDITED',
+        drawingId: updated.id,
+        details: JSON.stringify({ pdfUploaded: true, fileName: req.file.originalname }),
+        ipAddress: req.ip || null,
+      },
+    })
+
+    return res.json({ drawing: { ...updated, ...computeDurationAndDelay(updated) } })
+  } catch (err) {
+    next(err)
+  }
+})
+
+// ── DELETE /api/drawings/:id/pdf ──────────────────────────────────────────────
+router.delete('/:id/pdf', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!SUPABASE_SERVICE_KEY) {
+      return res.status(503).json({ error: 'PDF upload not configured (missing SUPABASE_SERVICE_KEY)', code: 'NOT_CONFIGURED' })
+    }
+
+    const drawing = await prisma.drawing.findUnique({ where: { id: req.params.id } })
+    if (!drawing || drawing.isDeleted) {
+      return res.status(404).json({ error: 'Drawing not found', code: 'NOT_FOUND' })
+    }
+
+    if (!drawing.pdfUrl) {
+      return res.status(404).json({ error: 'No PDF attached to this drawing', code: 'NO_PDF' })
+    }
+
+    // Remove from Supabase Storage
+    const oldPath = drawing.pdfUrl.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`)[1]
+    if (oldPath) {
+      await supabase.storage.from(STORAGE_BUCKET).remove([decodeURIComponent(oldPath)])
+    }
+
+    const updated = await prisma.drawing.update({
+      where: { id: req.params.id },
+      data: { pdfUrl: null },
+      select: drawingSelect,
+    })
+
+    return res.json({ drawing: { ...updated, ...computeDurationAndDelay(updated) } })
   } catch (err) {
     next(err)
   }

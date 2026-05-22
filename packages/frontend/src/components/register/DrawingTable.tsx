@@ -1,8 +1,10 @@
-import { MouseEvent, useState } from 'react'
+import { MouseEvent, useState, useRef } from 'react'
 import type { Drawing, SortColumn } from '../../types'
 import { statusPill, categoryPill, Avatar } from '../ui/Pill'
 import { Button } from '../ui/Button'
 import { formatSGTShort } from '../../lib/dates'
+import { drawingsApi } from '../../api/drawings'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface DrawingTableProps {
   drawings: Drawing[]
@@ -36,8 +38,43 @@ export function DrawingTable({
   drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, onUpdateReason, view, isLoading,
   currentUserId, currentUserRole,
 }: DrawingTableProps) {
+  const queryClient = useQueryClient()
   const [editingReasonId, setEditingReasonId] = useState<string | null>(null)
   const [reasonDraft, setReasonDraft] = useState('')
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadTargetId = useRef<string | null>(null)
+
+  const handlePdfUpload = async (file: File) => {
+    const id = uploadTargetId.current
+    if (!id) return
+    setUploadingId(id)
+    setUploadProgress(0)
+    setUploadError(null)
+    try {
+      await drawingsApi.uploadPdf(id, file, pct => setUploadProgress(pct))
+      queryClient.invalidateQueries({ queryKey: ['drawings'] })
+    } catch (err: unknown) {
+      const apiErr = err as { response?: { data?: { error?: string } } }
+      setUploadError(apiErr.response?.data?.error || 'Upload failed')
+    } finally {
+      setUploadingId(null)
+      setUploadProgress(0)
+      uploadTargetId.current = null
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeletePdf = async (id: string) => {
+    try {
+      await drawingsApi.deletePdf(id)
+      queryClient.invalidateQueries({ queryKey: ['drawings'] })
+    } catch {
+      // ignore
+    }
+  }
 
   const sortedIdx = (field: string) => sortColumns.findIndex(s => s.field === field)
   const sortDir = (field: string) => sortColumns.find(s => s.field === field)?.direction
@@ -94,11 +131,31 @@ export function DrawingTable({
 
   return (
     <div className="overflow-x-auto border border-border rounded-md">
+      {/* Hidden file input for PDF upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) handlePdfUpload(file)
+        }}
+      />
+      {uploadError && (
+        <div className="px-3 py-2 text-xs text-danger-text bg-danger-bg border-b border-danger-border">
+          ⚠ Upload failed: {uploadError}
+          <button onClick={() => setUploadError(null)} className="ml-2 underline">dismiss</button>
+        </div>
+      )}
       <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1500 }}>
         <thead>
           <tr>
             <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
               Actions
+            </th>
+            <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
+              PDF
             </th>
             {view === 'project' && (
               <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
@@ -152,6 +209,53 @@ export function DrawingTable({
                     )
                   })()}
                 </td>
+
+                {/* PDF column */}
+                <td className="px-2 py-2 align-middle text-center whitespace-nowrap">
+                  {uploadingId === drawing.id ? (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <div className="w-12 h-1.5 bg-surface-2 rounded-full overflow-hidden">
+                        <div className="h-full bg-info-text transition-all" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                      <span className="text-[9px] text-text-3">{uploadProgress}%</span>
+                    </div>
+                  ) : drawing.pdfUrl ? (
+                    <div className="flex items-center justify-center gap-1">
+                      <a
+                        href={drawing.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-6 h-6 flex items-center justify-center rounded bg-danger-bg text-danger-text hover:opacity-80 transition-opacity text-[11px]"
+                        title="View PDF"
+                      >
+                        📄
+                      </a>
+                      {canAct && (
+                        <button
+                          onClick={() => handleDeletePdf(drawing.id)}
+                          className="w-5 h-5 flex items-center justify-center rounded text-text-3 hover:bg-danger-bg hover:text-danger-text transition-colors text-[10px]"
+                          title="Remove PDF"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ) : canAct ? (
+                    <button
+                      onClick={() => {
+                        uploadTargetId.current = drawing.id
+                        fileInputRef.current?.click()
+                      }}
+                      className="w-6 h-6 flex items-center justify-center rounded text-text-3 hover:bg-info-bg hover:text-info-text transition-colors text-[11px] mx-auto"
+                      title="Upload PDF"
+                    >
+                      ⬆
+                    </button>
+                  ) : (
+                    <span className="text-text-3 text-[10px]">—</span>
+                  )}
+                </td>
+
                 {view === 'project' && (
                   <td className="px-2.5 py-2 align-middle whitespace-nowrap">
                     <div className="flex items-center gap-1.5">
