@@ -341,13 +341,14 @@ router.post('/:id/complete', requireAuth, async (req: Request, res: Response, ne
     }
 
     const now = new Date()
-    const isLate = now > drawing.endDate
+    const daysLate = Math.round((now.getTime() - drawing.endDate.getTime()) / (1000 * 60 * 60 * 24))
+    const isLate = daysLate > 0
 
     if (isLate && !data.lateReason) {
       return res.status(400).json({
         error: 'A late reason is required because the end date has passed',
         code: 'LATE_REASON_REQUIRED',
-        daysLate: Math.round((now.getTime() - drawing.endDate.getTime()) / (1000 * 60 * 60 * 24)),
+        daysLate,
       })
     }
 
@@ -370,7 +371,7 @@ router.post('/:id/complete', requireAuth, async (req: Request, res: Response, ne
         details: JSON.stringify({
           actualCompletionDate: now,
           lateReason: data.lateReason || null,
-          daysLate: isLate ? Math.round((now.getTime() - drawing.endDate.getTime()) / (1000 * 60 * 60 * 24)) : 0,
+          daysLate: isLate ? daysLate : 0,
         }),
         ipAddress: req.ip || null,
       },
