@@ -55,7 +55,6 @@ export function DrawingTable({
   const leftMirrorRef = useRef<HTMLDivElement>(null)
   const [mirrorScrollW, setMirrorScrollW] = useState(1700)
   const [mirrorScrollH, setMirrorScrollH] = useState(600)
-  const syncing = useRef(false)
 
   useEffect(() => {
     const main = mainScrollRef.current
@@ -71,25 +70,14 @@ export function DrawingTable({
     const ro = new ResizeObserver(updateDims)
     ro.observe(main)
 
+    // Setting scrollLeft/Top to the same value is a no-op in browsers
+    // and won't re-fire scroll events, so no infinite loop risk.
     const onMain = () => {
-      if (syncing.current) return
-      syncing.current = true
       if (top) top.scrollLeft = main.scrollLeft
       if (left) left.scrollTop = main.scrollTop
-      syncing.current = false
     }
-    const onTop = () => {
-      if (syncing.current) return
-      syncing.current = true
-      main.scrollLeft = top!.scrollLeft
-      syncing.current = false
-    }
-    const onLeft = () => {
-      if (syncing.current) return
-      syncing.current = true
-      main.scrollTop = left!.scrollTop
-      syncing.current = false
-    }
+    const onTop = () => { main.scrollLeft = top!.scrollLeft }
+    const onLeft = () => { main.scrollTop = left!.scrollTop }
 
     main.addEventListener('scroll', onMain)
     top?.addEventListener('scroll', onTop)
@@ -198,22 +186,6 @@ export function DrawingTable({
     setEditingReasonId(null)
   }
 
-  if (isLoading) {
-    return (
-      <div className="border border-border rounded-md overflow-hidden">
-        <div className="py-12 text-center text-text-3 text-sm">Loading drawings…</div>
-      </div>
-    )
-  }
-
-  if (drawings.length === 0) {
-    return (
-      <div className="border border-border rounded-md overflow-hidden">
-        <div className="py-12 text-center text-text-3 text-sm">No drawings found</div>
-      </div>
-    )
-  }
-
   return (
     <div className="border border-border rounded-md">
       {/* ── Top horizontal scroll mirror ── */}
@@ -235,12 +207,18 @@ export function DrawingTable({
           <div style={{ height: mirrorScrollH, width: 1 }} />
         </div>
 
-        {/* ── Main scroll area ── */}
+        {/* ── Main scroll area (always mounted so refs attach on first render) ── */}
         <div
           ref={mainScrollRef}
           className="overflow-auto flex-1 min-w-0 rounded-br-md"
           style={{ height: 'calc(100vh - 230px)' }}
         >
+          {isLoading && (
+            <div className="py-12 text-center text-text-3 text-sm">Loading drawings…</div>
+          )}
+          {!isLoading && drawings.length === 0 && (
+            <div className="py-12 text-center text-text-3 text-sm">No drawings found</div>
+          )}
       {/* Hidden file input for PDF upload */}
       <input
         ref={fileInputRef}
@@ -258,7 +236,7 @@ export function DrawingTable({
           <button onClick={() => setUploadError(null)} className="ml-2 underline">dismiss</button>
         </div>
       )}
-      <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1700 }}>
+      {!isLoading && drawings.length > 0 && <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1700 }}>
         <thead>
           <tr>
             <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
@@ -514,7 +492,7 @@ export function DrawingTable({
             )
           })}
         </tbody>
-      </table>
+      </table>}
       <ApprovalModal
         open={approvalTarget !== null}
         drawing={approvalTarget?.drawing ?? null}
