@@ -108,15 +108,17 @@ export function DesignerTab({ designers, counts, selectedId, onSelect, allDrawin
                 <div className={`text-[10px] mb-2 ${isSelected ? 'text-info-text/70' : 'text-text-3'}`}>
                   {count} drawing{count !== 1 ? 's' : ''}
                 </div>
-                <div className="flex gap-2 text-[10px]">
-                  <span className="text-info-text font-medium">{sc.inProgress}</span>
-                  <span className="text-success-text font-medium">{sc.completed}</span>
-                  <span className="text-danger-text font-medium">{sc.overdue}</span>
-                </div>
-                <div className="flex gap-2 text-[9px] text-text-3 mt-0.5">
-                  <span>WIP</span>
-                  <span>Done</span>
-                  <span>Late</span>
+                <div className={`w-full rounded-md px-2 py-1.5 ${sc.inProgress === 0 ? 'bg-danger-bg' : ''}`}>
+                  <div className="flex gap-2 text-[10px] justify-center">
+                    <span className="text-info-text font-medium">{sc.inProgress}</span>
+                    <span className="text-success-text font-medium">{sc.completed}</span>
+                    <span className="text-danger-text font-medium">{sc.overdue}</span>
+                  </div>
+                  <div className="flex gap-2 text-[9px] text-text-3 mt-0.5 justify-center">
+                    <span>WIP</span>
+                    <span>Done</span>
+                    <span>Late</span>
+                  </div>
                 </div>
               </button>
             )
