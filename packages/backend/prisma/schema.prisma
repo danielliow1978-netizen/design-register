@@ -89,6 +89,11 @@ model Drawing {
 
   pdfUrl               String?
 
+  approvalStatus       String?
+  approvalComment      String?
+  approvalDate         DateTime?
+  approvedById         String?
+
   isDeleted            Boolean   @default(false)
   deletedAt            DateTime?
   deletedById          String?
