@@ -153,6 +153,8 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
       category: 'category',
       discipline: 'discipline',
       createdAt: 'createdAt',
+      approvalStatus: 'approvalStatus',
+      approvalDate: 'approvalDate',
     }
 
     let orderBy: Record<string, string>[] = [{ endDate: 'asc' }]

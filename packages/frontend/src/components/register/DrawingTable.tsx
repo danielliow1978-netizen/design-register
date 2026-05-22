@@ -112,6 +112,34 @@ export function DrawingTable({
     )
   }
 
+  const thc = (field: string, label: string) => {
+    const idx = sortedIdx(field)
+    const dir = sortDir(field)
+    const isActive = idx >= 0
+    return (
+      <th
+        key={field}
+        onClick={(e: MouseEvent) => onHeaderClick(field, e.shiftKey)}
+        className={`px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap cursor-pointer select-none border-b border-border-strong transition-colors ${
+          isActive ? 'bg-info-bg text-info-text' : 'bg-surface-2 text-text-2 hover:bg-info-bg hover:text-info-text'
+        }`}
+      >
+        <span className="inline-flex items-center justify-center gap-0.5">
+          {label}
+          <span className="inline-flex flex-col ml-1 align-middle" style={{ fontSize: 8, lineHeight: '7px' }}>
+            <span className={dir === 'asc' ? 'text-info-text font-bold' : 'text-text-3 opacity-50'}>▲</span>
+            <span className={dir === 'desc' ? 'text-info-text font-bold' : 'text-text-3 opacity-50'}>▼</span>
+          </span>
+          {isActive && (
+            <span className="ml-1 bg-info-text text-white text-[8px] rounded-full px-1 py-px font-medium">
+              {idx + 1}
+            </span>
+          )}
+        </span>
+      </th>
+    )
+  }
+
   const saveReason = (id: string) => {
     if (onUpdateReason) onUpdateReason(id, reasonDraft.trim())
     setEditingReasonId(null)
@@ -161,12 +189,8 @@ export function DrawingTable({
             <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
               PDF
             </th>
-            <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-28">
-              Approval
-            </th>
-            <th className="px-2 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-24">
-              Approval Date
-            </th>
+            {thc('approvalStatus', 'Approval')}
+            {thc('approvalDate', 'Approval Date')}
             {view === 'project' && (
               <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
                 Designer
