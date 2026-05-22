@@ -32,6 +32,10 @@ export function ApprovalModal({ open, drawing, action, onClose, onSuccess }: App
   }
 
   const handleSubmit = async () => {
+    if (!isApprove && !comment.trim()) {
+      setError('A comment is required when rejecting a drawing.')
+      return
+    }
     setIsLoading(true)
     setError(null)
     try {
@@ -71,12 +75,14 @@ export function ApprovalModal({ open, drawing, action, onClose, onSuccess }: App
         </div>
 
         <div className="mb-3">
-          <label className={labelClass}>Comment (optional)</label>
+          <label className={labelClass}>
+            Comment {isApprove ? '(optional)' : <span className="text-danger-text">(required)</span>}
+          </label>
           <textarea
             value={comment}
             onChange={e => setComment(e.target.value)}
             className={inputClass + ' min-h-[80px] resize-y'}
-            placeholder="Add a comment (optional)…"
+            placeholder={isApprove ? 'Add a comment (optional)…' : 'Reason for rejection (required)…'}
             maxLength={1000}
           />
         </div>

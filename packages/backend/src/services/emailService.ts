@@ -251,6 +251,7 @@ interface ApprovalEmailParams {
   approverEmail: string
   approverName: string
   approvalDate: Date
+  ccRecipients?: { email: string; name: string }[]
 }
 
 export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<void> {
@@ -263,6 +264,7 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
   const {
     drawingNumber, drawingTitle, projectName, status, comment,
     designerEmail, designerName, approverEmail, approverName, approvalDate,
+    ccRecipients = [],
   } = params
 
   const isApproved = status === 'APPROVED'
@@ -278,9 +280,10 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
   const recipients = [
     { email: designerEmail, name: designerName },
     { email: approverEmail, name: approverName },
+    ...ccRecipients,
   ]
 
-  // Deduplicate in case designer and approver are the same person
+  // Deduplicate — designer, approver, and DH may overlap
   const unique = recipients.filter((r, i, arr) => arr.findIndex(x => x.email === r.email) === i)
 
   for (const recipient of unique) {

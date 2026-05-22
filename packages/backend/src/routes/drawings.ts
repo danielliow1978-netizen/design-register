@@ -123,7 +123,10 @@ const deleteSchema = z.object({
 const approveSchema = z.object({
   status: z.enum(['APPROVED', 'REJECTED']),
   comment: z.string().max(1000).optional(),
-})
+}).refine(
+  data => data.status !== 'REJECTED' || (data.comment && data.comment.trim().length > 0),
+  { message: 'A comment is required when rejecting a drawing', path: ['comment'] }
+)
 
 // ── GET /api/drawings ────────────────────────────────────────────────────────
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
@@ -589,6 +592,12 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
       },
     })
 
+    // Fetch active Department Head users to CC on all approval emails
+    const deptHeads = await prisma.user.findMany({
+      where: { role: 'DEPARTMENT_HEAD', active: true },
+      select: { email: true, fullName: true },
+    })
+
     // Fire-and-forget — do not await
     sendApprovalEmail({
       drawingNumber: drawing.drawingNumber,
@@ -601,6 +610,7 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
       approverEmail: req.user!.email,
       approverName: req.user!.fullName,
       approvalDate: now,
+      ccRecipients: deptHeads.map(u => ({ email: u.email, name: u.fullName })),
     }).catch(err => console.error('[email] approval notification failed:', err))
 
     const { duration, delay } = computeDurationAndDelay(updated as Parameters<typeof computeDurationAndDelay>[0])
