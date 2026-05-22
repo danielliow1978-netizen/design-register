@@ -230,3 +230,70 @@ export async function sendWeeklyDigest(): Promise<void> {
     }
   }
 }
+
+interface ApprovalEmailParams {
+  drawingNumber: string
+  drawingTitle: string
+  projectName: string
+  status: 'APPROVED' | 'REJECTED'
+  comment: string | null
+  designerEmail: string
+  designerName: string
+  approverEmail: string
+  approverName: string
+  approvalDate: Date
+}
+
+export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<void> {
+  const resend = getResend()
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set, skipping approval notification')
+    return
+  }
+
+  const {
+    drawingNumber, drawingTitle, projectName, status, comment,
+    designerEmail, designerName, approverEmail, approverName, approvalDate,
+  } = params
+
+  const isApproved = status === 'APPROVED'
+  const statusLabel = isApproved ? 'Approved' : 'Rejected'
+  const statusIcon = isApproved ? '✅' : '❌'
+  const statusColor = isApproved ? '#27500A' : '#791F1F'
+  const statusBg = isApproved ? '#EAF3DE' : '#FCEBEB'
+  const formattedDate = formatSGT(approvalDate)
+  const commentText = comment?.trim() || 'No comment provided'
+
+  const template = loadTemplate('approval-notification.html')
+
+  const recipients = [
+    { email: designerEmail, name: designerName },
+    { email: approverEmail, name: approverName },
+  ]
+
+  // Deduplicate in case designer and approver are the same person
+  const unique = recipients.filter((r, i, arr) => arr.findIndex(x => x.email === r.email) === i)
+
+  for (const recipient of unique) {
+    const html = replace(template, {
+      RECIPIENT_NAME: recipient.name.split(' ')[0],
+      DRAWING_NUMBER: drawingNumber,
+      DRAWING_TITLE: drawingTitle,
+      PROJECT_NAME: projectName,
+      STATUS: statusLabel,
+      STATUS_ICON: statusIcon,
+      STATUS_COLOR: statusColor,
+      STATUS_BG: statusBg,
+      COMMENT: commentText,
+      APPROVER_NAME: approverName,
+      APPROVAL_DATE: formattedDate,
+    })
+
+    await resend.emails.send({
+      from: process.env.EMAIL_FROM || 'noreply@designregister.com',
+      to: recipient.email,
+      subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
+      html,
+    })
+  }
+}

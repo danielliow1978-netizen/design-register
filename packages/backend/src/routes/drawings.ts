@@ -6,6 +6,7 @@ import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
 import { requireAuth, requireRole, canDeleteDrawing } from '../middleware/auth'
 import { createError } from '../middleware/errorHandler'
+import { sendApprovalEmail } from '../services/emailService'
 
 // ── Supabase Storage client ───────────────────────────────────────────────────
 const SUPABASE_URL = process.env.SUPABASE_URL || `https://zkhdbpsesuzdreinnjxn.supabase.co`
@@ -528,9 +529,6 @@ router.delete('/:id/pdf', requireAuth, async (req: Request, res: Response, next:
     next(err)
   }
 })
-
-// TODO: replaced by emailService import in Task 3
-const sendApprovalEmail = async (_params: unknown): Promise<void> => { /* replaced in Task 3 */ }
 
 // ── POST /api/drawings/:id/approve ───────────────────────────────────────────
 router.post('/:id/approve', requireAuth, requireRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
