@@ -539,7 +539,7 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
     const drawing = await prisma.drawing.findUnique({
       where: { id },
       select: {
-        id: true, status: true, isDeleted: true,
+        id: true, status: true, category: true, isDeleted: true,
         drawingNumber: true, drawingTitle: true,
         project: { select: { name: true } },
         designer: { select: { id: true, fullName: true, email: true } },
@@ -551,6 +551,9 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
     }
     if (drawing.status !== 'COMPLETED') {
       return res.status(400).json({ error: 'Only completed drawings can be approved or rejected', code: 'NOT_COMPLETED' })
+    }
+    if (!['TENDER', 'SHOP'].includes(drawing.category)) {
+      return res.status(400).json({ error: 'Only Tender and Shop drawings require approval', code: 'APPROVAL_NOT_REQUIRED' })
     }
 
     const now = new Date()

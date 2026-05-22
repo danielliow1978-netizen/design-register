@@ -268,7 +268,7 @@ export function DrawingTable({
 
                 {/* Approval column */}
                 <td className="px-2 py-2 align-middle text-center whitespace-nowrap">
-                  {!isCompleted ? (
+                  {(!isCompleted || !['TENDER', 'SHOP'].includes(drawing.category)) ? (
                     <span className="text-text-3 text-[10px]">—</span>
                   ) : drawing.approvalStatus === 'APPROVED' ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success-bg text-success-text text-[10px] font-medium">
@@ -302,7 +302,9 @@ export function DrawingTable({
 
                 {/* Approval Date column */}
                 <td className="px-2 py-2 align-middle text-center whitespace-nowrap text-text-2 text-[11px]">
-                  {drawing.approvalDate ? formatSGTShort(drawing.approvalDate) : <span className="text-text-3">—</span>}
+                  {drawing.approvalDate && ['TENDER', 'SHOP'].includes(drawing.category)
+                    ? formatSGTShort(drawing.approvalDate)
+                    : <span className="text-text-3">—</span>}
                 </td>
 
                 {view === 'project' && (
