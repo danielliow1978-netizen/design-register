@@ -557,6 +557,8 @@ router.post('/:id/approve', requireAuth, requireRole('DESIGN_MANAGER'), async (r
 
     const now = new Date()
 
+    // Re-approval is intentional: a Design Manager can change a previous decision.
+    // Fields are simply overwritten; each call creates a new audit log entry.
     const updated = await prisma.drawing.update({
       where: { id },
       data: {
@@ -580,7 +582,7 @@ router.post('/:id/approve', requireAuth, requireRole('DESIGN_MANAGER'), async (r
           comment: comment ?? null,
           approvedBy: req.user!.fullName,
         }),
-        ipAddress: req.ip,
+        ipAddress: req.ip || null,
       },
     })
 
