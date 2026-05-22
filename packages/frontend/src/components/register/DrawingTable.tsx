@@ -1,4 +1,4 @@
-import { MouseEvent, useState, useRef } from 'react'
+import { MouseEvent, useState, useRef, useEffect } from 'react'
 import type { Drawing, SortColumn } from '../../types'
 import { statusPill, categoryPill, Avatar } from '../ui/Pill'
 import { Button } from '../ui/Button'
@@ -48,6 +48,59 @@ export function DrawingTable({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadTargetId = useRef<string | null>(null)
   const [approvalTarget, setApprovalTarget] = useState<{ drawing: Drawing; action: 'APPROVED' | 'REJECTED' } | null>(null)
+
+  // Scroll mirror refs
+  const mainScrollRef = useRef<HTMLDivElement>(null)
+  const topMirrorRef = useRef<HTMLDivElement>(null)
+  const leftMirrorRef = useRef<HTMLDivElement>(null)
+  const [mirrorScrollW, setMirrorScrollW] = useState(1700)
+  const [mirrorScrollH, setMirrorScrollH] = useState(600)
+  const syncing = useRef(false)
+
+  useEffect(() => {
+    const main = mainScrollRef.current
+    const top = topMirrorRef.current
+    const left = leftMirrorRef.current
+    if (!main) return
+
+    const updateDims = () => {
+      setMirrorScrollW(main.scrollWidth)
+      setMirrorScrollH(main.scrollHeight)
+    }
+    updateDims()
+    const ro = new ResizeObserver(updateDims)
+    ro.observe(main)
+
+    const onMain = () => {
+      if (syncing.current) return
+      syncing.current = true
+      if (top) top.scrollLeft = main.scrollLeft
+      if (left) left.scrollTop = main.scrollTop
+      syncing.current = false
+    }
+    const onTop = () => {
+      if (syncing.current) return
+      syncing.current = true
+      main.scrollLeft = top!.scrollLeft
+      syncing.current = false
+    }
+    const onLeft = () => {
+      if (syncing.current) return
+      syncing.current = true
+      main.scrollTop = left!.scrollTop
+      syncing.current = false
+    }
+
+    main.addEventListener('scroll', onMain)
+    top?.addEventListener('scroll', onTop)
+    left?.addEventListener('scroll', onLeft)
+    return () => {
+      main.removeEventListener('scroll', onMain)
+      top?.removeEventListener('scroll', onTop)
+      left?.removeEventListener('scroll', onLeft)
+      ro.disconnect()
+    }
+  }, [])
 
   const handlePdfUpload = async (file: File) => {
     const id = uploadTargetId.current
@@ -162,7 +215,32 @@ export function DrawingTable({
   }
 
   return (
-    <div className="overflow-x-auto border border-border rounded-md">
+    <div className="border border-border rounded-md">
+      {/* ── Top horizontal scroll mirror ── */}
+      <div
+        ref={topMirrorRef}
+        className="overflow-x-scroll overflow-y-hidden rounded-t-md"
+        style={{ height: 12 }}
+      >
+        <div style={{ width: mirrorScrollW, height: 1 }} />
+      </div>
+
+      <div className="flex">
+        {/* ── Left vertical scroll mirror ── */}
+        <div
+          ref={leftMirrorRef}
+          className="overflow-y-scroll overflow-x-hidden shrink-0 rounded-bl-md"
+          style={{ width: 12, height: 'calc(100vh - 230px)' }}
+        >
+          <div style={{ height: mirrorScrollH, width: 1 }} />
+        </div>
+
+        {/* ── Main scroll area ── */}
+        <div
+          ref={mainScrollRef}
+          className="overflow-auto flex-1 min-w-0 rounded-br-md"
+          style={{ height: 'calc(100vh - 230px)' }}
+        >
       {/* Hidden file input for PDF upload */}
       <input
         ref={fileInputRef}
@@ -447,6 +525,8 @@ export function DrawingTable({
           queryClient.invalidateQueries({ queryKey: ['drawings'] })
         }}
       />
+        </div>
+      </div>
     </div>
   )
 }
