@@ -78,6 +78,8 @@ export function DrawingTable({
     }
   }
 
+  const canApprove = ['DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN'].includes(currentUserRole ?? '')
+
   const sortedIdx = (field: string) => sortColumns.findIndex(s => s.field === field)
   const sortDir = (field: string) => sortColumns.find(s => s.field === field)?.direction
 
@@ -276,7 +278,7 @@ export function DrawingTable({
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-bg text-danger-text text-[10px] font-medium">
                       ✕ Rejected
                     </span>
-                  ) : currentUserRole === 'DESIGN_MANAGER' ? (
+                  ) : canApprove ? (
                     <div className="flex items-center justify-center gap-1">
                       <button
                         onClick={() => setApprovalTarget({ drawing, action: 'APPROVED' })}

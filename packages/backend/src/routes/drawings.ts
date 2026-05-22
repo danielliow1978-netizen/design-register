@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import multer from 'multer'
 import { createClient } from '@supabase/supabase-js'
-import { requireAuth, requireRole, canDeleteDrawing } from '../middleware/auth'
+import { requireAuth, requireRole, requireMinRole, canDeleteDrawing } from '../middleware/auth'
 import { createError } from '../middleware/errorHandler'
 import { sendApprovalEmail } from '../services/emailService'
 
@@ -531,7 +531,7 @@ router.delete('/:id/pdf', requireAuth, async (req: Request, res: Response, next:
 })
 
 // ── POST /api/drawings/:id/approve ───────────────────────────────────────────
-router.post('/:id/approve', requireAuth, requireRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params
     const { status, comment } = approveSchema.parse(req.body)
