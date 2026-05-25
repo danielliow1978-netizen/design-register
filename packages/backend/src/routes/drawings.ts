@@ -145,6 +145,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     }
 
     // Parse sort: "status:asc,endDate:desc"
+    // NOTE: 'delay' and 'duration' are computed fields — handled in-memory after fetch.
     const SORTABLE_FIELDS: Record<string, string> = {
       drawingNumber: 'drawingNumber',
       drawingTitle: 'drawingTitle',
@@ -159,17 +160,20 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
       approvalStatus: 'approvalStatus',
       approvalDate: 'approvalDate',
     }
+    const COMPUTED_SORTABLE = ['delay', 'duration']
+
+    // Separate DB-sortable columns from computed ones
+    const sortParts = sort ? sort.split(',').map(s => {
+      const [field, dir] = s.split(':')
+      return { field, dir: dir as 'asc' | 'desc' }
+    }).filter(p => p.dir === 'asc' || p.dir === 'desc') : []
+
+    const dbSortParts = sortParts.filter(p => SORTABLE_FIELDS[p.field])
+    const computedSortParts = sortParts.filter(p => COMPUTED_SORTABLE.includes(p.field))
 
     let orderBy: Record<string, string>[] = [{ endDate: 'asc' }]
-    if (sort) {
-      const parsed = sort.split(',').map(s => {
-        const [field, dir] = s.split(':')
-        if (SORTABLE_FIELDS[field] && (dir === 'asc' || dir === 'desc')) {
-          return { [SORTABLE_FIELDS[field]]: dir }
-        }
-        return null
-      }).filter(Boolean) as Record<string, string>[]
-      if (parsed.length > 0) orderBy = parsed
+    if (dbSortParts.length > 0) {
+      orderBy = dbSortParts.map(p => ({ [SORTABLE_FIELDS[p.field]]: p.dir }))
     }
 
     const drawings = await prisma.drawing.findMany({
@@ -182,6 +186,23 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
       ...d,
       ...computeDurationAndDelay(d),
     }))
+
+    // Apply in-memory sort for computed fields (delay, duration)
+    if (computedSortParts.length > 0) {
+      enriched.sort((a, b) => {
+        for (const { field, dir } of computedSortParts) {
+          const va = (a as Record<string, unknown>)[field] as number | null
+          const vb = (b as Record<string, unknown>)[field] as number | null
+          // null (in-progress drawings) always sort last regardless of direction
+          if (va === null && vb === null) continue
+          if (va === null) return 1
+          if (vb === null) return -1
+          const diff = dir === 'asc' ? va - vb : vb - va
+          if (diff !== 0) return diff
+        }
+        return 0
+      })
+    }
 
     return res.json({ drawings: enriched })
   } catch (err) {
