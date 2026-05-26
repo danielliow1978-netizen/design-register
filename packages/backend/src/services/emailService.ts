@@ -1,4 +1,4 @@
-import { Resend } from 'resend'
+import nodemailer from 'nodemailer'
 import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
@@ -7,9 +7,14 @@ import { toZonedTime } from 'date-fns-tz'
 
 const prisma = new PrismaClient()
 
-function getResend(): Resend | null {
-  if (!process.env.RESEND_API_KEY) return null
-  return new Resend(process.env.RESEND_API_KEY)
+function getTransporter(): nodemailer.Transporter | null {
+  const user = process.env.EMAIL_USER
+  const pass = process.env.EMAIL_PASS
+  if (!user || !pass) return null
+  return nodemailer.createTransport({
+    service: 'gmail',
+    auth: { user, pass },
+  })
 }
 
 function loadTemplate(name: string): string {
@@ -40,9 +45,9 @@ function formatSGT(date: Date): string {
 }
 
 export async function sendDailyDigest(): Promise<void> {
-  const resend = getResend()
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set, skipping daily digest')
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping daily digest')
     return
   }
 
@@ -50,7 +55,6 @@ export async function sendDailyDigest(): Promise<void> {
   const now = new Date()
   const threeDaysFromNow = addDays(now, 3)
 
-  // Get all designers with digest enabled who have open drawings
   const designers = await prisma.user.findMany({
     where: {
       emailDigestEnabled: true,
@@ -125,8 +129,8 @@ export async function sendDailyDigest(): Promise<void> {
     })
 
     try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || 'noreply@designregister.com',
+      await transporter.sendMail({
+        from: `"Design Register" <${process.env.EMAIL_USER}>`,
         to: designer.email,
         subject,
         html,
@@ -139,16 +143,15 @@ export async function sendDailyDigest(): Promise<void> {
 }
 
 export async function sendWeeklyDigest(): Promise<void> {
-  const resend = getResend()
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set, skipping weekly digest')
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping weekly digest')
     return
   }
 
   const template = loadTemplate('weekly-digest.html')
   const now = new Date()
 
-  // Team stats
   const allDrawings = await prisma.drawing.findMany({
     where: { isDeleted: false },
     select: { status: true, designerId: true, endDate: true, actualCompletionDate: true },
@@ -158,14 +161,12 @@ export async function sendWeeklyDigest(): Promise<void> {
   const onTimeCompleted = completed.filter(d => d.actualCompletionDate && d.actualCompletionDate <= d.endDate)
   const onTimePct = completed.length > 0 ? Math.round((onTimeCompleted.length / completed.length) * 100) : 0
 
-  // Completed this week
   const weekStart = new Date(now)
   weekStart.setDate(now.getDate() - 7)
   const completedThisWeek = completed.filter(
     d => d.actualCompletionDate && d.actualCompletionDate >= weekStart
   ).length
 
-  // Overloaded designers (>= 6 active drawings)
   const activeByDesigner: Record<string, number> = {}
   for (const d of allDrawings.filter(d => ['IN_PROGRESS', 'OVERDUE'].includes(d.status))) {
     activeByDesigner[d.designerId] = (activeByDesigner[d.designerId] || 0) + 1
@@ -178,7 +179,6 @@ export async function sendWeeklyDigest(): Promise<void> {
     select: { fullName: true, id: true },
   })
 
-  // Top 3 at-risk: overdue + soonest end date
   const atRiskDrawings = await prisma.drawing.findMany({
     where: { isDeleted: false, status: { in: ['IN_PROGRESS', 'OVERDUE'] } },
     include: {
@@ -202,7 +202,6 @@ export async function sendWeeklyDigest(): Promise<void> {
     </div>`
   ).join('') || '<div style="font-size:12px;color:#5F5E5A;">No overloaded designers ✅</div>'
 
-  // Send to managers
   const managers = await prisma.user.findMany({
     where: {
       emailDigestEnabled: true,
@@ -227,8 +226,8 @@ export async function sendWeeklyDigest(): Promise<void> {
     const subject = `📊 Design team weekly — ${overdue.length} overdue, ${onTimePct}% on-time`
 
     try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || 'noreply@designregister.com',
+      await transporter.sendMail({
+        from: `"Design Register" <${process.env.EMAIL_USER}>`,
         to: manager.email,
         subject,
         html,
@@ -255,9 +254,9 @@ interface ApprovalEmailParams {
 }
 
 export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<void> {
-  const resend = getResend()
-  if (!resend) {
-    console.log('[email] RESEND_API_KEY not set, skipping approval notification')
+  const transporter = getTransporter()
+  if (!transporter) {
+    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping approval notification')
     return
   }
 
@@ -283,7 +282,7 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
     ...ccRecipients,
   ]
 
-  // Deduplicate — designer, approver, and DH may overlap
+  // Deduplicate
   const unique = recipients.filter((r, i, arr) => arr.findIndex(x => x.email === r.email) === i)
 
   for (const recipient of unique) {
@@ -292,18 +291,18 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
       DRAWING_NUMBER: escapeHtml(drawingNumber),
       DRAWING_TITLE: escapeHtml(drawingTitle),
       PROJECT_NAME: escapeHtml(projectName),
-      STATUS: statusLabel,               // derived from enum — safe
-      STATUS_ICON: statusIcon,           // hardcoded emoji — safe
-      STATUS_COLOR: statusColor,         // hardcoded hex — safe
-      STATUS_BG: statusBg,               // hardcoded hex — safe
+      STATUS: statusLabel,
+      STATUS_ICON: statusIcon,
+      STATUS_COLOR: statusColor,
+      STATUS_BG: statusBg,
       COMMENT: escapeHtml(commentText),
       APPROVER_NAME: escapeHtml(approverName),
-      APPROVAL_DATE: formattedDate,      // formatted date string — safe
+      APPROVAL_DATE: formattedDate,
     })
 
     try {
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM || 'noreply@designregister.com',
+      await transporter.sendMail({
+        from: `"Design Register" <${process.env.EMAIL_USER}>`,
         to: recipient.email,
         subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
         html,
