@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
@@ -7,14 +7,14 @@ import { toZonedTime } from 'date-fns-tz'
 
 const prisma = new PrismaClient()
 
-function getTransporter(): nodemailer.Transporter | null {
-  const user = process.env.EMAIL_USER
-  const pass = process.env.EMAIL_PASS
-  if (!user || !pass) return null
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user, pass },
-  })
+function getResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) return null
+  return new Resend(apiKey)
+}
+
+function getFromAddress(): string {
+  return process.env.EMAIL_FROM || 'Design Register <noreply@lewe.com.sg>'
 }
 
 function loadTemplate(name: string): string {
@@ -45,9 +45,9 @@ function formatSGT(date: Date): string {
 }
 
 export async function sendDailyDigest(): Promise<void> {
-  const transporter = getTransporter()
-  if (!transporter) {
-    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping daily digest')
+  const resend = getResend()
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set, skipping daily digest')
     return
   }
 
@@ -129,8 +129,8 @@ export async function sendDailyDigest(): Promise<void> {
     })
 
     try {
-      await transporter.sendMail({
-        from: `"Design Register" <${process.env.EMAIL_USER}>`,
+      await resend.emails.send({
+        from: getFromAddress(),
         to: designer.email,
         subject,
         html,
@@ -143,9 +143,9 @@ export async function sendDailyDigest(): Promise<void> {
 }
 
 export async function sendWeeklyDigest(): Promise<void> {
-  const transporter = getTransporter()
-  if (!transporter) {
-    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping weekly digest')
+  const resend = getResend()
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set, skipping weekly digest')
     return
   }
 
@@ -226,8 +226,8 @@ export async function sendWeeklyDigest(): Promise<void> {
     const subject = `📊 Design team weekly — ${overdue.length} overdue, ${onTimePct}% on-time`
 
     try {
-      await transporter.sendMail({
-        from: `"Design Register" <${process.env.EMAIL_USER}>`,
+      await resend.emails.send({
+        from: getFromAddress(),
         to: manager.email,
         subject,
         html,
@@ -254,9 +254,9 @@ interface ApprovalEmailParams {
 }
 
 export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<void> {
-  const transporter = getTransporter()
-  if (!transporter) {
-    console.log('[email] EMAIL_USER/EMAIL_PASS not set, skipping approval notification')
+  const resend = getResend()
+  if (!resend) {
+    console.log('[email] RESEND_API_KEY not set, skipping approval notification')
     return
   }
 
@@ -301,8 +301,8 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
     })
 
     try {
-      await transporter.sendMail({
-        from: `"Design Register" <${process.env.EMAIL_USER}>`,
+      await resend.emails.send({
+        from: getFromAddress(),
         to: recipient.email,
         subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
         html,

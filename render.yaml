@@ -18,10 +18,10 @@ services:
         value: 7d
       - key: CORS_ORIGINS
         sync: false  # Set to your Vercel frontend URL
-      - key: EMAIL_USER
-        sync: false  # Gmail address used to send emails (e.g. yourapp@gmail.com)
-      - key: EMAIL_PASS
-        sync: false  # Gmail App Password (16-char, generated in Google Account settings)
+      - key: RESEND_API_KEY
+        sync: false  # Resend API key from resend.com dashboard
+      - key: EMAIL_FROM
+        sync: false  # From address e.g. "Design Register <noreply@lewe.com.sg>"
       - key: FRONTEND_URL
         sync: false  # Set to your Vercel frontend URL
       - key: PORT
