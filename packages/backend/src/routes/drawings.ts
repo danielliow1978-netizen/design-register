@@ -614,9 +614,9 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
       },
     })
 
-    // Fetch active Department Head users to CC on all approval emails
+    // Fetch active Department Head and Design Manager users to CC on all approval emails
     const deptHeads = await prisma.user.findMany({
-      where: { role: 'DEPARTMENT_HEAD', active: true },
+      where: { role: { in: ['DEPARTMENT_HEAD', 'DESIGN_MANAGER'] }, active: true },
       select: { email: true, fullName: true },
     })
 
