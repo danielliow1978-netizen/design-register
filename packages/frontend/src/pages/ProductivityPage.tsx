@@ -4,7 +4,7 @@ import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts'
-import { TopBar } from '../components/layout/TopBar'
+
 import { ExportMenu } from '../components/ui/ExportMenu'
 import { Pill, categoryPill } from '../components/ui/Pill'
 import { dashboardApi } from '../api/dashboard'
@@ -95,7 +95,7 @@ export default function ProductivityPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-[1280px] mx-auto px-6 py-6">
-        <TopBar />
+        
 
         {/* Filters */}
         <div className="flex items-center gap-3 mb-6 flex-wrap">

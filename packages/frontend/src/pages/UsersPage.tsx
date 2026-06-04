@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TopBar } from '../components/layout/TopBar'
+
 import { Button } from '../components/ui/Button'
 import { Avatar } from '../components/ui/Pill'
 import { AddUserModal } from '../modals/AddUserModal'
@@ -89,7 +89,7 @@ export default function UsersPage() {
 
   return (
     <div className="min-h-screen bg-bg p-4">
-      <TopBar />
+      
 
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center justify-between mb-4">

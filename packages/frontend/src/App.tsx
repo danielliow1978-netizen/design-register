@@ -3,6 +3,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import { useThemeStore } from './store/themeStore'
 import { useAuthStore } from './store/authStore'
+import { Layout } from './components/layout/Layout'
 import Login from './pages/Login'
 import RegisterPage from './pages/RegisterPage'
 import ProductivityPage from './pages/ProductivityPage'
@@ -23,7 +24,7 @@ const queryClient = new QueryClient({
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token)
   if (!token) return <Navigate to="/login" replace />
-  return <>{children}</>
+  return <Layout>{children}</Layout>
 }
 
 const router = createBrowserRouter([

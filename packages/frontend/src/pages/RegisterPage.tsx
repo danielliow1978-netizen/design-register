@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TopBar } from '../components/layout/TopBar'
 import { ViewSwitcher } from '../components/register/ViewSwitcher'
 import { DesignerTab } from '../components/register/DesignerTab'
 import { ProjectTab } from '../components/register/ProjectTab'
 import { DrawingTable } from '../components/register/DrawingTable'
 import { ExportMenu } from '../components/ui/ExportMenu'
-import { Button } from '../components/ui/Button'
-import { Avatar } from '../components/ui/Pill'
 import { useSort } from '../hooks/useSort'
 import { drawingsApi } from '../api/drawings'
 import { projectsApi } from '../api/projects'
@@ -30,6 +27,70 @@ type StatusFilter = typeof STATUS_FILTERS[number]
 
 const APPROVAL_FILTERS = ['ALL', 'PENDING_APPROVAL', 'APPROVED'] as const
 type ApprovalFilter = typeof APPROVAL_FILTERS[number]
+
+// ── Shared filter bar ──────────────────────────────────────────────────────
+function FilterBar({
+  statusFilter, setStatusFilter,
+  approvalFilter, setApprovalFilter,
+  hideComplete, setHideComplete,
+  statusCounts, approvalCounts,
+}: {
+  statusFilter: StatusFilter; setStatusFilter: (f: StatusFilter) => void
+  approvalFilter: ApprovalFilter; setApprovalFilter: (f: ApprovalFilter) => void
+  hideComplete: boolean; setHideComplete: (v: (h: boolean) => boolean) => void
+  statusCounts: Record<string, number>; approvalCounts: Record<string, number>
+}) {
+  const STATUS_DOT: Record<string, string> = {
+    IN_PROGRESS: '#3b82f6',
+    COMPLETED: '#22c55e',
+    OVERDUE: '#f43f5e',
+  }
+  const STATUS_LABEL: Record<string, string> = {
+    ALL: 'All', IN_PROGRESS: 'In progress', COMPLETED: 'Completed', OVERDUE: 'Overdue',
+  }
+  return (
+    <div className="flex items-center gap-2 mb-3 flex-wrap">
+      {STATUS_FILTERS.map(f => (
+        <button key={f}
+          onClick={() => { setStatusFilter(f); setApprovalFilter('ALL') }}
+          className={`fchip ${statusFilter === f && approvalFilter === 'ALL' ? 'fchip-all' : ''}`}
+        >
+          {f !== 'ALL' && (
+            <span className="sdot" style={{ background: STATUS_DOT[f] }} />
+          )}
+          {STATUS_LABEL[f]} <strong className="font-semibold">{statusCounts[f] ?? 0}</strong>
+        </button>
+      ))}
+      <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 2px', display: 'inline-block' }} />
+      <button
+        onClick={() => { setApprovalFilter('PENDING_APPROVAL'); setStatusFilter('ALL') }}
+        className={`fchip ${approvalFilter === 'PENDING_APPROVAL' ? 'fchip-pend' : ''}`}
+      >
+        <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Pending approval <strong className="font-semibold">{approvalCounts.PENDING_APPROVAL ?? 0}</strong>
+      </button>
+      <button
+        onClick={() => { setApprovalFilter('APPROVED'); setStatusFilter('ALL') }}
+        className={`fchip ${approvalFilter === 'APPROVED' ? 'fchip-appr' : ''}`}
+      >
+        <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Approved <strong className="font-semibold">{approvalCounts.APPROVED ?? 0}</strong>
+      </button>
+      <button
+        onClick={() => setHideComplete(h => !h)}
+        className={`fchip ${hideComplete ? 'fchip-pend' : ''}`}
+      >
+        <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          {hideComplete
+            ? <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            : <path d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
+          }
+        </svg>
+        {hideComplete ? 'Show completed' : 'Hide completed'}
+      </button>
+    </div>
+  )
+}
 
 export default function RegisterPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -204,9 +265,53 @@ export default function RegisterPage() {
   const filename = `DesignRegister_${view === 'designer' ? 'Designer' : 'Project'}_${formatSGT(new Date(), 'yyyy-MM-dd')}`
 
   return (
-    <div className="min-h-screen bg-bg">
-      <div className="max-w-[1280px] mx-auto px-6 py-6">
-        <TopBar />
+    <div className="flex flex-col min-h-screen bg-bg">
+      {/* ── Page top bar ── */}
+      <header className="page-topbar">
+        <h1 className="text-[15px] font-semibold text-text mr-auto flex items-center gap-2">
+          Drawing Register
+          <span className="text-[11px] font-medium text-text-3 bg-surface-2 border border-border px-2 py-0.5 rounded-full">
+            {allDrawings.length} drawings
+          </span>
+        </h1>
+        {/* View toggle */}
+        <div className="flex items-center bg-surface-2 rounded-lg p-0.5 gap-0.5">
+          <ViewSwitcher view={view} onChange={v => { setView(v); if (v !== 'designer') setDesignerGridView(false) }} />
+        </div>
+        {/* Search */}
+        <div className="relative">
+          <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-3" style={{width:13,height:13}} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            className="pl-8 pr-3 py-1.5 text-[12px] bg-surface-2 border border-border rounded-lg w-44 focus:outline-none focus:border-info-border focus:bg-surface transition-all text-text placeholder-text-3"
+            placeholder="Search drawings…" />
+        </div>
+        <ExportMenu onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)} onExcel={() => exportTableToExcel(drawings, filename)} onCsv={() => exportTableToCsv(drawings, filename)} />
+        <button
+          onClick={() => setAddOpen(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-[12px] font-semibold transition-all cursor-pointer"
+          style={{ background: 'linear-gradient(135deg,#1d4ed8,#2563eb)', boxShadow: '0 4px 14px rgba(37,99,235,.35)' }}
+        >
+          <svg style={{width:13,height:13}} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4"/></svg>
+          Add Drawing
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-6 py-5">
+        {/* ── KPI Summary Cards ── */}
+        <div className="grid gap-4 mb-5" style={{ gridTemplateColumns: 'repeat(5,1fr)' }}>
+          {[
+            { label: 'Total Drawings', value: statusCounts.ALL, cls: 'kpi-total', color: 'text-text' },
+            { label: 'In Progress',    value: statusCounts.IN_PROGRESS, cls: 'kpi-wip',  color: 'text-info-text' },
+            { label: 'Completed',      value: statusCounts.COMPLETED,   cls: 'kpi-done', color: 'text-success-text' },
+            { label: 'Overdue',        value: statusCounts.OVERDUE,     cls: 'kpi-overdue', color: 'text-danger-text' },
+            { label: 'Pending Approval', value: approvalCounts.PENDING_APPROVAL, cls: 'kpi-pend', color: 'text-warning-text' },
+          ].map(kpi => (
+            <div key={kpi.label} className={`kpi-card ${kpi.cls}`}>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-text-3 mb-2">{kpi.label}</div>
+              <div className={`text-[30px] font-bold leading-none ${kpi.color}`}>{kpi.value}</div>
+            </div>
+          ))}
+        </div>
 
         {/* View switcher + grid toggle */}
         <div className="flex items-center gap-2 mb-3.5">
@@ -256,7 +361,7 @@ export default function RegisterPage() {
             {selectedDesigner && (
               <div className="flex items-center justify-between bg-info-bg border border-info-border rounded-md px-4 py-3 mb-3.5">
                 <div className="flex items-center gap-3">
-                  <Avatar initials={selectedDesigner.initials} color={selectedDesigner.avatarColor} size="lg" />
+                  <div className="flex items-center justify-center rounded-full text-white text-sm font-bold flex-shrink-0" style={{ width: 36, height: 36, background: selectedDesigner.avatarColor }}>{selectedDesigner.initials}</div>
                   <div>
                     <div className="font-medium text-sm text-info-text">{selectedDesigner.fullName}'s drawing register</div>
                     <div className="text-[11px] text-text-2 mt-0.5">{selectedDesigner.discipline?.replace('_', ' ')} · {selectedDesigner.role.replace('_', ' ')} · {designerCounts[selectedDesigner.id] ?? 0} total drawings</div>
@@ -278,43 +383,12 @@ export default function RegisterPage() {
             )}
 
             {/* Filter bar */}
-            <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-              <div className="flex gap-1.5 flex-wrap items-center">
-                {STATUS_FILTERS.map(f => (
-                  <button key={f} onClick={() => { setStatusFilter(f); setApprovalFilter('ALL') }}
-                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f && approvalFilter === 'ALL' ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
-                    {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
-                  </button>
-                ))}
-                {/* Divider */}
-                <span className="text-border mx-0.5">|</span>
-                {/* Approval filters */}
-                <button
-                  onClick={() => { setApprovalFilter('PENDING_APPROVAL'); setStatusFilter('ALL') }}
-                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'PENDING_APPROVAL' ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                >
-                  ⏳ Pending approval · {approvalCounts.PENDING_APPROVAL}
-                </button>
-                <button
-                  onClick={() => { setApprovalFilter('APPROVED'); setStatusFilter('ALL') }}
-                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'APPROVED' ? 'border-success-border bg-success-bg text-success-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                >
-                  ✅ Approved · {approvalCounts.APPROVED}
-                </button>
-                <button
-                  onClick={() => setHideComplete(h => !h)}
-                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                >
-                  {hideComplete ? '👁 Show completed' : '🙈 Hide completed'}
-                </button>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                  className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text placeholder-text-3 w-48 focus:outline-none focus:border-info-border" />
-                <ExportMenu onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)} onExcel={() => exportTableToExcel(drawings, filename)} onCsv={() => exportTableToCsv(drawings, filename)} />
-                <Button variant="primary" onClick={() => setAddOpen(true)}>+ Add drawing</Button>
-              </div>
-            </div>
+            <FilterBar
+              statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+              approvalFilter={approvalFilter} setApprovalFilter={setApprovalFilter}
+              hideComplete={hideComplete} setHideComplete={setHideComplete}
+              statusCounts={statusCounts} approvalCounts={approvalCounts}
+            />
 
             {sortColumns.length > 0 && (
               <div className="flex items-center gap-2 bg-info-bg border border-info-border rounded-md px-2.5 py-1.5 mb-2.5 text-[11px] text-info-text flex-wrap">
@@ -374,43 +448,12 @@ export default function RegisterPage() {
               )}
 
               {/* Filter bar */}
-              <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                <div className="flex gap-1.5 flex-wrap items-center">
-                  {STATUS_FILTERS.map(f => (
-                    <button key={f} onClick={() => { setStatusFilter(f); setApprovalFilter('ALL') }}
-                      className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f && approvalFilter === 'ALL' ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
-                      {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
-                    </button>
-                  ))}
-                  {/* Divider */}
-                  <span className="text-border mx-0.5">|</span>
-                  {/* Approval filters */}
-                  <button
-                    onClick={() => { setApprovalFilter('PENDING_APPROVAL'); setStatusFilter('ALL') }}
-                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'PENDING_APPROVAL' ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                  >
-                    ⏳ Pending approval · {approvalCounts.PENDING_APPROVAL}
-                  </button>
-                  <button
-                    onClick={() => { setApprovalFilter('APPROVED'); setStatusFilter('ALL') }}
-                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'APPROVED' ? 'border-success-border bg-success-bg text-success-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                  >
-                    ✅ Approved · {approvalCounts.APPROVED}
-                  </button>
-                  <button
-                    onClick={() => setHideComplete(h => !h)}
-                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
-                  >
-                    {hideComplete ? '👁 Show completed' : '🙈 Hide completed'}
-                  </button>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="🔍 Search..."
-                    className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text placeholder-text-3 w-40 focus:outline-none focus:border-info-border" />
-                  <ExportMenu onPdf={() => exportTableToPdf(drawings, filename, user?.pdfDefault)} onExcel={() => exportTableToExcel(drawings, filename)} onCsv={() => exportTableToCsv(drawings, filename)} />
-                  <Button variant="primary" onClick={() => setAddOpen(true)}>+ Add drawing</Button>
-                </div>
-              </div>
+              <FilterBar
+                statusFilter={statusFilter} setStatusFilter={setStatusFilter}
+                approvalFilter={approvalFilter} setApprovalFilter={setApprovalFilter}
+                hideComplete={hideComplete} setHideComplete={setHideComplete}
+                statusCounts={statusCounts} approvalCounts={approvalCounts}
+              />
 
               {sortColumns.length > 0 && (
                 <div className="flex items-center gap-2 bg-info-bg border border-info-border rounded-md px-2.5 py-1.5 mb-2.5 text-[11px] text-info-text flex-wrap">

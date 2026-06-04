@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { TopBar } from '../components/layout/TopBar'
+
 import { Avatar } from '../components/ui/Pill'
 import { Button } from '../components/ui/Button'
 import { auditApi } from '../api/audit'
@@ -93,7 +93,7 @@ export default function AuditLogPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-[1280px] mx-auto px-6 py-6">
-        <TopBar />
+        
 
         <div className="flex items-center justify-between mb-4">
           <div>

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TopBar } from '../components/layout/TopBar'
+
 import { Button } from '../components/ui/Button'
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '../components/ui/Modal'
 import { statusPill, categoryPill, Avatar } from '../components/ui/Pill'
@@ -56,7 +56,7 @@ export default function RecycleBinPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="max-w-[1280px] mx-auto px-6 py-6">
-        <TopBar />
+        
 
         <div className="flex items-center justify-between mb-4">
           <div>
