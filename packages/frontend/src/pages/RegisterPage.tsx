@@ -28,6 +28,9 @@ import { DeleteConfirmModal } from '../modals/DeleteConfirmModal'
 const STATUS_FILTERS = ['ALL', 'IN_PROGRESS', 'COMPLETED', 'OVERDUE'] as const
 type StatusFilter = typeof STATUS_FILTERS[number]
 
+const APPROVAL_FILTERS = ['ALL', 'PENDING_APPROVAL', 'APPROVED'] as const
+type ApprovalFilter = typeof APPROVAL_FILTERS[number]
+
 export default function RegisterPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const view = (searchParams.get('view') as 'designer' | 'project') || 'designer'
@@ -38,6 +41,7 @@ export default function RegisterPage() {
   const [selectedDesignerId, setSelectedDesignerId] = useState<string | null>(null)
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL')
+  const [approvalFilter, setApprovalFilter] = useState<ApprovalFilter>('ALL')
   const [search, setSearch] = useState('')
   const [hideComplete, setHideComplete] = useState(false)
 
@@ -159,12 +163,26 @@ export default function RegisterPage() {
     OVERDUE: allDrawings.filter(d => d.status === 'OVERDUE' && (!selectedDesignerId || d.designerId === selectedDesignerId)).length,
   }
 
+  // Approval counts — only SHOP/TENDER drawings qualify for approval
+  const approvalCounts = {
+    PENDING_APPROVAL: allDrawings.filter(d =>
+      ['SHOP', 'TENDER'].includes(d.category) &&
+      d.status === 'COMPLETED' &&
+      !d.approvalStatus &&
+      (!selectedDesignerId || d.designerId === selectedDesignerId)
+    ).length,
+    APPROVED: allDrawings.filter(d =>
+      d.approvalStatus === 'APPROVED' &&
+      (!selectedDesignerId || d.designerId === selectedDesignerId)
+    ).length,
+  }
+
   // Info banner data
   const selectedDesigner = designers.find(d => d.id === selectedDesignerId)
   const selectedProject = projects.find(p => p.id === selectedProjectId)
 
   // Hide-complete filter: hides COMPLETED CONSTRUCTION/AS-BUILT and COMPLETED APPROVED SHOP/TENDER
-  const visibleDrawings = hideComplete
+  const afterHideComplete = hideComplete
     ? drawings.filter(d => {
         if (d.status !== 'COMPLETED') return true
         if (['CONSTRUCTION', 'AS_BUILT'].includes(d.category)) return false
@@ -172,6 +190,15 @@ export default function RegisterPage() {
         return true
       })
     : drawings
+
+  // Approval filter
+  const visibleDrawings = approvalFilter === 'ALL'
+    ? afterHideComplete
+    : approvalFilter === 'PENDING_APPROVAL'
+      ? afterHideComplete.filter(d =>
+          ['SHOP', 'TENDER'].includes(d.category) && d.status === 'COMPLETED' && !d.approvalStatus
+        )
+      : afterHideComplete.filter(d => d.approvalStatus === 'APPROVED')
 
   // Export handlers
   const filename = `DesignRegister_${view === 'designer' ? 'Designer' : 'Project'}_${formatSGT(new Date(), 'yyyy-MM-dd')}`
@@ -254,11 +281,26 @@ export default function RegisterPage() {
             <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
               <div className="flex gap-1.5 flex-wrap items-center">
                 {STATUS_FILTERS.map(f => (
-                  <button key={f} onClick={() => setStatusFilter(f)}
-                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
+                  <button key={f} onClick={() => { setStatusFilter(f); setApprovalFilter('ALL') }}
+                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f && approvalFilter === 'ALL' ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
                     {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
                   </button>
                 ))}
+                {/* Divider */}
+                <span className="text-border mx-0.5">|</span>
+                {/* Approval filters */}
+                <button
+                  onClick={() => { setApprovalFilter('PENDING_APPROVAL'); setStatusFilter('ALL') }}
+                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'PENDING_APPROVAL' ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                >
+                  ⏳ Pending approval · {approvalCounts.PENDING_APPROVAL}
+                </button>
+                <button
+                  onClick={() => { setApprovalFilter('APPROVED'); setStatusFilter('ALL') }}
+                  className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'APPROVED' ? 'border-success-border bg-success-bg text-success-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                >
+                  ✅ Approved · {approvalCounts.APPROVED}
+                </button>
                 <button
                   onClick={() => setHideComplete(h => !h)}
                   className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
@@ -335,11 +377,26 @@ export default function RegisterPage() {
               <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                 <div className="flex gap-1.5 flex-wrap items-center">
                   {STATUS_FILTERS.map(f => (
-                    <button key={f} onClick={() => setStatusFilter(f)}
-                      className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
+                    <button key={f} onClick={() => { setStatusFilter(f); setApprovalFilter('ALL') }}
+                      className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${statusFilter === f && approvalFilter === 'ALL' ? 'border-info-border bg-info-bg text-info-text' : 'border-border text-text-2 hover:border-border-strong'}`}>
                       {f === 'ALL' ? 'All' : f === 'IN_PROGRESS' ? 'In progress' : f.charAt(0) + f.slice(1).toLowerCase()} · {statusCounts[f]}
                     </button>
                   ))}
+                  {/* Divider */}
+                  <span className="text-border mx-0.5">|</span>
+                  {/* Approval filters */}
+                  <button
+                    onClick={() => { setApprovalFilter('PENDING_APPROVAL'); setStatusFilter('ALL') }}
+                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'PENDING_APPROVAL' ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                  >
+                    ⏳ Pending approval · {approvalCounts.PENDING_APPROVAL}
+                  </button>
+                  <button
+                    onClick={() => { setApprovalFilter('APPROVED'); setStatusFilter('ALL') }}
+                    className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${approvalFilter === 'APPROVED' ? 'border-success-border bg-success-bg text-success-text' : 'border-border text-text-2 hover:border-border-strong'}`}
+                  >
+                    ✅ Approved · {approvalCounts.APPROVED}
+                  </button>
                   <button
                     onClick={() => setHideComplete(h => !h)}
                     className={`text-[11px] px-2.5 py-1 border rounded-md transition-colors ${hideComplete ? 'border-warning-border bg-warning-bg text-warning-text' : 'border-border text-text-2 hover:border-border-strong'}`}
