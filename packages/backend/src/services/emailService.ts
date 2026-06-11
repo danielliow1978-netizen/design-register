@@ -275,42 +275,51 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
   const commentText = comment?.trim() || 'No comment provided'
 
   const template = loadTemplate('approval-notification.html')
+  const subject = `Drawing ${drawingNumber} has been ${statusLabel} by ${approverName}`
 
-  const recipients = [
-    { email: designerEmail, name: designerName },
-    { email: approverEmail, name: approverName },
-    ...ccRecipients,
-  ]
+  const commonTokens = {
+    DRAWING_NUMBER: escapeHtml(drawingNumber),
+    DRAWING_TITLE: escapeHtml(drawingTitle),
+    PROJECT_NAME: escapeHtml(projectName),
+    STATUS: statusLabel,
+    STATUS_LOWER: statusLabel.toLowerCase(),
+    STATUS_ICON: statusIcon,
+    STATUS_COLOR: statusColor,
+    STATUS_BG: statusBg,
+    COMMENT: escapeHtml(commentText),
+    APPROVER_NAME: escapeHtml(approverName),
+    APPROVAL_DATE: formattedDate,
+  }
 
-  // Deduplicate
-  const unique = recipients.filter((r, i, arr) => arr.findIndex(x => x.email === r.email) === i)
-
-  for (const recipient of unique) {
-    const html = replace(template, {
-      RECIPIENT_NAME: escapeHtml(recipient.name.split(' ')[0] || recipient.name || 'there'),
-      DRAWING_NUMBER: escapeHtml(drawingNumber),
-      DRAWING_TITLE: escapeHtml(drawingTitle),
-      PROJECT_NAME: escapeHtml(projectName),
-      STATUS: statusLabel,
-      STATUS_LOWER: statusLabel.toLowerCase(),
-      STATUS_ICON: statusIcon,
-      STATUS_COLOR: statusColor,
-      STATUS_BG: statusBg,
-      COMMENT: escapeHtml(commentText),
-      APPROVER_NAME: escapeHtml(approverName),
-      APPROVAL_DATE: formattedDate,
+  // Send 1 personalised email to the designer
+  const designerFirstName = designerName.split(' ')[0] || designerName || 'there'
+  try {
+    await resend.emails.send({
+      from: getFromAddress(),
+      to: designerEmail,
+      subject,
+      html: replace(template, { RECIPIENT_NAME: escapeHtml(designerFirstName), ...commonTokens }),
     })
+    console.log(`[email] Approval notification sent to designer ${designerEmail}`)
+  } catch (err) {
+    console.error('[email] Failed to send to designer:', err)
+  }
 
+  // Send 1 batch email to approver + all CC managers/admins (exclude designer to avoid duplicate)
+  const otherEmails = [approverEmail, ...ccRecipients.map(r => r.email)]
+    .filter((e, i, arr) => arr.indexOf(e) === i && e !== designerEmail)
+
+  if (otherEmails.length > 0) {
     try {
       await resend.emails.send({
         from: getFromAddress(),
-        to: recipient.email,
-        subject: `Drawing ${drawingNumber} has been ${statusLabel} by ${approverName}`,
-        html,
+        to: otherEmails,
+        subject,
+        html: replace(template, { RECIPIENT_NAME: 'Design Team', ...commonTokens }),
       })
-      console.log(`[email] Approval notification sent to ${recipient.email}`)
+      console.log(`[email] Approval notification sent to ${otherEmails.length} others: ${otherEmails.join(', ')}`)
     } catch (err) {
-      console.error(`[email] Failed to send approval notification to ${recipient.email}:`, err)
+      console.error('[email] Failed to send batch notification:', err)
     }
   }
 }
