@@ -292,6 +292,7 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
       DRAWING_TITLE: escapeHtml(drawingTitle),
       PROJECT_NAME: escapeHtml(projectName),
       STATUS: statusLabel,
+      STATUS_LOWER: statusLabel.toLowerCase(),
       STATUS_ICON: statusIcon,
       STATUS_COLOR: statusColor,
       STATUS_BG: statusBg,
@@ -304,7 +305,7 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
       await resend.emails.send({
         from: getFromAddress(),
         to: recipient.email,
-        subject: `Drawing ${drawingNumber} has been ${statusLabel}`,
+        subject: `Drawing ${drawingNumber} has been ${statusLabel} by ${approverName}`,
         html,
       })
       console.log(`[email] Approval notification sent to ${recipient.email}`)

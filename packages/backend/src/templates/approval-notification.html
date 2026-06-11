@@ -20,7 +20,7 @@
       <tr>
         <td style="padding:20px 28px 12px;">
           <div style="font-size:15px;font-weight:500;color:#2C2C2A;">Hi {{RECIPIENT_NAME}},</div>
-          <div style="font-size:13px;color:#5F5E5A;margin-top:6px;">Drawing <strong>{{DRAWING_NUMBER}}</strong> has been reviewed.</div>
+          <div style="font-size:13px;color:#5F5E5A;margin-top:6px;">Drawing <strong>{{DRAWING_NUMBER}}</strong> has been {{STATUS_LOWER}} by <strong>{{APPROVER_NAME}}</strong>.</div>
         </td>
       </tr>
       <!-- Status badge -->
@@ -58,7 +58,7 @@
       <tr>
         <td style="padding:16px 28px;border-top:1px solid rgba(0,0,0,0.08);">
           <div style="font-size:11px;color:#8A8984;">
-            Reviewed by <strong>{{APPROVER_NAME}}</strong> on {{APPROVAL_DATE}}
+            {{STATUS}} by <strong>{{APPROVER_NAME}}</strong> on {{APPROVAL_DATE}}
           </div>
         </td>
       </tr>

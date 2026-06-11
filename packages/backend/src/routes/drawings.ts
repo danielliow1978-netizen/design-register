@@ -360,6 +360,9 @@ router.post('/:id/complete', requireAuth, async (req: Request, res: Response, ne
     if (drawing.status === 'COMPLETED') {
       return res.status(400).json({ error: 'Drawing is already completed', code: 'ALREADY_COMPLETED' })
     }
+    if (!drawing.pdfUrl) {
+      return res.status(400).json({ error: 'A PDF drawing must be attached before marking as complete', code: 'PDF_REQUIRED' })
+    }
 
     const now = new Date()
     const daysLate = Math.round((now.getTime() - drawing.endDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -467,6 +470,9 @@ router.post('/:id/upload', requireAuth, upload.single('pdf'), async (req: Reques
     if (!drawing || drawing.isDeleted) {
       return res.status(404).json({ error: 'Drawing not found', code: 'NOT_FOUND' })
     }
+    if (drawing.approvalStatus === 'APPROVED') {
+      return res.status(403).json({ error: 'PDF cannot be replaced after the drawing has been approved', code: 'APPROVED_LOCKED' })
+    }
 
     if (!req.file) {
       return res.status(400).json({ error: 'No PDF file provided', code: 'NO_FILE' })
@@ -538,6 +544,9 @@ router.delete('/:id/pdf', requireAuth, async (req: Request, res: Response, next:
     if (!drawing.pdfUrl) {
       return res.status(404).json({ error: 'No PDF attached to this drawing', code: 'NO_PDF' })
     }
+    if (drawing.approvalStatus === 'APPROVED') {
+      return res.status(403).json({ error: 'PDF cannot be removed after the drawing has been approved', code: 'APPROVED_LOCKED' })
+    }
 
     // Remove from Supabase Storage
     const oldPath = drawing.pdfUrl.split(`/storage/v1/object/public/${STORAGE_BUCKET}/`)[1]
@@ -567,7 +576,7 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
       where: { id },
       select: {
         id: true, status: true, category: true, isDeleted: true,
-        drawingNumber: true, drawingTitle: true,
+        drawingNumber: true, drawingTitle: true, pdfUrl: true,
         project: { select: { name: true } },
         designer: { select: { id: true, fullName: true, email: true } },
       },
@@ -581,6 +590,9 @@ router.post('/:id/approve', requireAuth, requireMinRole('DESIGN_MANAGER'), async
     }
     if (!['TENDER', 'SHOP'].includes(drawing.category)) {
       return res.status(400).json({ error: 'Only Tender and Shop drawings require approval', code: 'APPROVAL_NOT_REQUIRED' })
+    }
+    if (!drawing.pdfUrl) {
+      return res.status(400).json({ error: 'A PDF drawing must be attached before approving or rejecting', code: 'PDF_REQUIRED' })
     }
 
     const now = new Date()
