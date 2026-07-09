@@ -37,21 +37,30 @@ const createSchema = z.object({
 
 const updateSchema = createSchema.partial()
 
-// GET /api/site-locations?date=YYYY-MM-DD — all team entries for a day (team board).
-// Without a date, returns the last 30 days (history feed).
+// GET /api/site-locations — list site-location entries.
+//   ?date=YYYY-MM-DD          → all team entries for a single day (board)
+//   ?from=YYYY-MM-DD&to=...   → date range (history view). Dates are "YYYY-MM-DD"
+//                               strings, which sort chronologically, so gte/lte work.
+//   ?userId=...               → limit to one person
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { date, userId } = req.query as Record<string, string>
+    const { date, userId, from, to } = req.query as Record<string, string>
 
     const where: Record<string, unknown> = {}
     if (date) where.date = date
+    else if (from || to) {
+      where.date = {
+        ...(from ? { gte: from } : {}),
+        ...(to ? { lte: to } : {}),
+      }
+    }
     if (userId) where.userId = userId
 
     const entries = await prisma.siteLocation.findMany({
       where,
       select: siteLocationSelect,
       orderBy: [{ date: 'desc' }, { timeIn: 'asc' }, { createdAt: 'asc' }],
-      take: date ? 500 : 300,
+      take: date ? 500 : 2000,
     })
 
     return res.json({ entries })

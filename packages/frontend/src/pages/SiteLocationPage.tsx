@@ -7,6 +7,7 @@ import { siteLocationsApi, type SiteLocationInput } from '../api/siteLocations'
 import { usersApi } from '../api/users'
 import { useAuthStore } from '../store/authStore'
 import { formatSGT, todaySGT } from '../lib/dates'
+import { subMonths, format } from 'date-fns'
 import type { SiteLocation, User } from '../types'
 
 const DESIGNER_ROLES = [
@@ -28,9 +29,15 @@ export default function SiteLocationPage() {
   const queryClient = useQueryClient()
   const today = todaySGT()
 
+  const [mode, setMode] = useState<'daily' | 'history'>('daily')
   const [boardDate, setBoardDate] = useState(today)
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // History filters (default: last 6 months)
+  const [histFrom, setHistFrom] = useState(format(subMonths(new Date(today), 6), 'yyyy-MM-dd'))
+  const [histTo, setHistTo] = useState(today)
+  const [histUser, setHistUser] = useState('')
 
   // My entries for today
   const { data: myEntries = [] } = useQuery({
@@ -46,6 +53,13 @@ export default function SiteLocationPage() {
   })
 
   const { data: users = [] } = useQuery({ queryKey: ['users'], queryFn: usersApi.list })
+
+  // History: entries across a date range
+  const { data: historyEntries = [], isLoading: historyLoading } = useQuery({
+    queryKey: ['site-locations', { from: histFrom, to: histTo, userId: histUser }],
+    queryFn: () => siteLocationsApi.list({ from: histFrom, to: histTo, userId: histUser || undefined }),
+    enabled: mode === 'history',
+  })
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['site-locations'] })
 
@@ -127,6 +141,19 @@ export default function SiteLocationPage() {
 
   const loggedCount = boardUsers.filter(b => b.entries.length > 0).length
 
+  // History grouped by date (backend already returns newest-first)
+  const historyByDate: { date: string; entries: SiteLocation[] }[] = []
+  const dateIndex = new Map<string, number>()
+  for (const e of historyEntries) {
+    let idx = dateIndex.get(e.date)
+    if (idx === undefined) {
+      idx = historyByDate.length
+      dateIndex.set(e.date, idx)
+      historyByDate.push({ date: e.date, entries: [] })
+    }
+    historyByDate[idx].entries.push(e)
+  }
+
   const inputCls = 'w-full text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none focus:border-info-border'
   const labelCls = 'block text-[11px] text-text-2 mb-1'
 
@@ -134,6 +161,87 @@ export default function SiteLocationPage() {
     <div className="min-h-screen bg-bg">
       <div className="max-w-[900px] mx-auto px-6 py-6">
 
+        {/* ── Daily / History toggle ── */}
+        <div className="flex items-center bg-surface-2 rounded-lg p-0.5 gap-0.5 mb-4 w-fit">
+          {(['daily', 'history'] as const).map(m => (
+            <button key={m}
+              onClick={() => setMode(m)}
+              className={`px-3.5 py-1.5 rounded-md text-[12px] font-medium transition-colors ${
+                mode === m ? 'bg-surface text-text shadow-sm' : 'text-text-2 hover:text-text'
+              }`}
+            >
+              {m === 'daily' ? 'Daily' : 'History'}
+            </button>
+          ))}
+        </div>
+
+        {mode === 'history' ? (
+          /* ── History view ── */
+          <div className="bg-surface border border-border rounded-lg p-5">
+            <div className="flex items-center gap-2 mb-1">
+              <svg className="text-info-text" style={{ width: 18, height: 18 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <h2 className="text-base font-medium text-text">Site location history</h2>
+            </div>
+            <p className="text-xs text-text-3 mb-3">{historyEntries.length} record{historyEntries.length === 1 ? '' : 's'} · {formatSGT(histFrom, 'dd MMM yyyy')} – {formatSGT(histTo, 'dd MMM yyyy')}</p>
+
+            {/* Filters */}
+            <div className="flex gap-2 flex-wrap items-center mb-4">
+              <select value={histUser} onChange={e => setHistUser(e.target.value)}
+                className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none">
+                <option value="">All team</option>
+                {designers.map(d => <option key={d.id} value={d.id}>{d.fullName}</option>)}
+              </select>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-text-3">From</span>
+                <input type="date" value={histFrom} max={histTo} onChange={e => setHistFrom(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none" />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-text-3">To</span>
+                <input type="date" value={histTo} min={histFrom} max={today} onChange={e => setHistTo(e.target.value)}
+                  className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none" />
+              </div>
+              <Button size="sm" onClick={() => { setHistFrom(format(subMonths(new Date(today), 6), 'yyyy-MM-dd')); setHistTo(today); setHistUser('') }}>
+                Last 6 months
+              </Button>
+            </div>
+
+            {historyLoading ? (
+              <div className="py-10 text-center text-text-3 text-sm">Loading history…</div>
+            ) : historyByDate.length === 0 ? (
+              <div className="py-10 text-center text-text-3 text-sm">No site locations recorded in this period</div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {historyByDate.map(group => (
+                  <div key={group.date}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[11px] font-medium text-text-2">{formatSGT(group.date, 'EEE, dd MMM yyyy')}</span>
+                      <span className="flex-1 h-px bg-border" />
+                      <span className="text-[10px] text-text-3">{group.entries.length} entr{group.entries.length === 1 ? 'y' : 'ies'}</span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {group.entries.map(e => (
+                        <div key={e.id} className="flex items-start gap-3 py-2">
+                          <div className="mt-0.5"><Avatar initials={e.user.initials} color={e.user.avatarColor} size="sm" /></div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[12px] text-text-2">{e.user.fullName}</span>
+                            <div className="text-[12px] text-text flex items-center gap-1.5">
+                              <svg className="text-text-3 shrink-0" style={{ width: 11, height: 11 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+                              <span className="truncate">{e.siteName}{e.siteArea ? ` · ${e.siteArea}` : ''}</span>
+                            </div>
+                            {e.note && <div className="text-[11px] text-text-3 mt-0.5 truncate">{e.note}</div>}
+                          </div>
+                          {timeRange(e) && <span className="text-[11px] text-text-3 shrink-0 mt-0.5">{timeRange(e)}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+        <>
         {/* ── My site locations today ── */}
         <div className="bg-surface border border-border rounded-lg p-5 mb-4">
           <div className="flex items-center gap-2">
@@ -256,6 +364,8 @@ export default function SiteLocationPage() {
             </div>
           )}
         </div>
+        </>
+        )}
 
       </div>
     </div>

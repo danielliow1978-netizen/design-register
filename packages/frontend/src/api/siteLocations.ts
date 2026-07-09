@@ -11,7 +11,7 @@ export interface SiteLocationInput {
 }
 
 export const siteLocationsApi = {
-  list: (params?: { date?: string; userId?: string }) =>
+  list: (params?: { date?: string; userId?: string; from?: string; to?: string }) =>
     apiClient.get<{ entries: SiteLocation[] }>('/site-locations', { params }).then(r => r.data.entries),
   create: (data: SiteLocationInput) =>
     apiClient.post<{ entry: SiteLocation }>('/site-locations', data).then(r => r.data.entry),
