@@ -105,6 +105,20 @@ export interface AuditEntry {
   createdAt: string
 }
 
+export interface SiteLocation {
+  id: string
+  userId: string
+  user: Pick<User, 'id' | 'fullName' | 'initials' | 'avatarColor' | 'role'>
+  date: string          // "YYYY-MM-DD"
+  siteName: string
+  siteArea?: string | null
+  timeIn?: string | null   // "HH:mm"
+  timeOut?: string | null  // "HH:mm"
+  note?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface DashboardData {
   kpis: {
     completedCount: number

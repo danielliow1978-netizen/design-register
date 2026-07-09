@@ -48,15 +48,17 @@ export default function AuditLogPage() {
   const [userFilter, setUserFilter] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  const [search, setSearch] = useState('')
   const [offset, setOffset] = useState(0)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['audit', { action: actionFilter, userId: userFilter, from, to, limit: PAGE_SIZE, offset }],
+    queryKey: ['audit', { action: actionFilter, userId: userFilter, from, to, search, limit: PAGE_SIZE, offset }],
     queryFn: () => auditApi.list({
       action: actionFilter || undefined,
       userId: userFilter || undefined,
       from: from || undefined,
       to: to || undefined,
+      search: search || undefined,
       limit: PAGE_SIZE,
       offset,
     }),
@@ -125,8 +127,17 @@ export default function AuditLogPage() {
             className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none" />
           <input type="date" value={to} onChange={e => { setTo(e.target.value); setOffset(0) }}
             className="text-xs px-2.5 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none" />
-          {(actionFilter || userFilter || from || to) && (
-            <Button size="sm" onClick={() => { setActionFilter(''); setUserFilter(''); setFrom(''); setTo(''); setOffset(0) }}>
+          <div className="relative">
+            <svg className="absolute left-2 top-1/2 -translate-y-1/2 text-text-3" style={{width:12,height:12}} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input
+              value={search}
+              onChange={e => { setSearch(e.target.value); setOffset(0) }}
+              placeholder="Search drawing no., title…"
+              className="text-xs pl-7 pr-3 py-1.5 border border-border rounded-md bg-surface text-text focus:outline-none w-48"
+            />
+          </div>
+          {(actionFilter || userFilter || from || to || search) && (
+            <Button size="sm" onClick={() => { setActionFilter(''); setUserFilter(''); setFrom(''); setTo(''); setSearch(''); setOffset(0) }}>
               Clear filters
             </Button>
           )}

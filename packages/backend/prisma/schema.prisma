@@ -43,6 +43,7 @@ model User {
   drawingsAsProjectMgr Project[]
   drafts               DrawingDraft[]
   auditEntries         AuditLog[]
+  siteLocations        SiteLocation[]
 }
 
 model Project {
@@ -119,6 +120,26 @@ model DrawingDraft {
   expiresAt     DateTime
 
   @@index([userId, expiresAt])
+}
+
+// Daily job-site location check-in. Designers log where they are working each day.
+// Multiple rows per user per day are allowed (a designer can visit several sites).
+// `date` is stored as a "YYYY-MM-DD" string (SGT) to sidestep timezone drift.
+model SiteLocation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  date      String   // "YYYY-MM-DD" in Singapore time
+  siteName  String   // free-text site / project name
+  siteArea  String?
+  timeIn    String?  // "HH:mm"
+  timeOut   String?  // "HH:mm"
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([userId, date])
 }
 
 model AuditLog {

@@ -10,6 +10,7 @@ import draftsRouter from './routes/drafts'
 import auditRouter from './routes/audit'
 import recycleRouter from './routes/recycle'
 import dashboardRouter from './routes/dashboard'
+import siteLocationsRouter from './routes/siteLocations'
 import { initCronJobs } from './services/digestScheduler'
 
 const app = express()
@@ -36,6 +37,7 @@ app.use('/api/drafts', draftsRouter)
 app.use('/api/audit', auditRouter)
 app.use('/api/recycle', recycleRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/site-locations', siteLocationsRouter)
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '2' })

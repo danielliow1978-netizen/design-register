@@ -6,6 +6,7 @@ import { useAuthStore } from './store/authStore'
 import { Layout } from './components/layout/Layout'
 import Login from './pages/Login'
 import RegisterPage from './pages/RegisterPage'
+import SiteLocationPage from './pages/SiteLocationPage'
 import ProductivityPage from './pages/ProductivityPage'
 import AuditLogPage from './pages/AuditLogPage'
 import RecycleBinPage from './pages/RecycleBinPage'
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <ProtectedRoute><RegisterPage /></ProtectedRoute>,
+  },
+  {
+    path: '/site-location',
+    element: <ProtectedRoute><SiteLocationPage /></ProtectedRoute>,
   },
   {
     path: '/productivity',

@@ -37,7 +37,7 @@ function FilterBar({
 }: {
   statusFilter: StatusFilter; setStatusFilter: (f: StatusFilter) => void
   approvalFilter: ApprovalFilter; setApprovalFilter: (f: ApprovalFilter) => void
-  hideComplete: boolean; setHideComplete: (v: (h: boolean) => boolean) => void
+  hideComplete: boolean; setHideComplete: (v: boolean) => void
   statusCounts: Record<string, number>; approvalCounts: Record<string, number>
 }) {
   const STATUS_DOT: Record<string, string> = {
@@ -77,7 +77,11 @@ function FilterBar({
         Approved <strong className="font-semibold">{approvalCounts.APPROVED ?? 0}</strong>
       </button>
       <button
-        onClick={() => setHideComplete(h => !h)}
+        onClick={() => {
+          const next = !hideComplete
+          setHideComplete(next)
+          if (next && statusFilter === 'COMPLETED') setStatusFilter('ALL')
+        }}
         className={`fchip ${hideComplete ? 'fchip-pend' : ''}`}
       >
         <svg style={{ width: 12, height: 12, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -242,14 +246,9 @@ export default function RegisterPage() {
   const selectedDesigner = designers.find(d => d.id === selectedDesignerId)
   const selectedProject = projects.find(p => p.id === selectedProjectId)
 
-  // Hide-complete filter: hides COMPLETED CONSTRUCTION/AS-BUILT and COMPLETED APPROVED SHOP/TENDER
+  // Hide-complete filter: hides all COMPLETED drawings
   const afterHideComplete = hideComplete
-    ? drawings.filter(d => {
-        if (d.status !== 'COMPLETED') return true
-        if (['CONSTRUCTION', 'AS_BUILT'].includes(d.category)) return false
-        if (['SHOP', 'TENDER'].includes(d.category) && d.approvalStatus === 'APPROVED') return false
-        return true
-      })
+    ? drawings.filter(d => d.status !== 'COMPLETED')
     : drawings
 
   // Approval filter
@@ -408,7 +407,7 @@ export default function RegisterPage() {
             <DrawingTable drawings={visibleDrawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
               onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
               onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
-              view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
+              isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
           </>
         )}
 
@@ -473,7 +472,7 @@ export default function RegisterPage() {
               <DrawingTable drawings={visibleDrawings} sortColumns={sortColumns} onHeaderClick={handleHeaderClick}
                 onComplete={handleComplete} onEdit={d => setEditDrawing(d)} onDelete={d => setDeleteDrawing(d)}
                 onUpdateReason={(id, reason) => updateReasonMutation.mutate({ id, reason })}
-                view={view} isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
+                isLoading={drawingsLoading} currentUserId={user?.id} currentUserRole={user?.role} />
             </div>
           </div>
         )}

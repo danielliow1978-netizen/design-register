@@ -15,7 +15,6 @@ interface DrawingTableProps {
   onEdit: (drawing: Drawing) => void
   onDelete: (drawing: Drawing) => void
   onUpdateReason?: (id: string, reason: string) => void
-  view: 'designer' | 'project'
   isLoading?: boolean
   currentUserId?: string
   currentUserRole?: string
@@ -25,6 +24,7 @@ const HEADERS: { field: string; label: string; locked?: boolean }[] = [
   { field: 'drawingNumber', label: 'Drawing no.' },
   { field: 'drawingTitle', label: 'Project / title' },
   { field: 'category', label: 'Cat.' },
+  // Designer column inserted here (rendered inline between Cat. and Requestor)
   { field: 'requestorId', label: 'Requestor' },
   { field: 'requestDate', label: 'Request', locked: true },
   { field: 'startDate', label: 'Start', locked: true },
@@ -36,7 +36,7 @@ const HEADERS: { field: string; label: string; locked?: boolean }[] = [
 ]
 
 export function DrawingTable({
-  drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, onUpdateReason, view, isLoading,
+  drawings, sortColumns, onHeaderClick, onComplete, onEdit, onDelete, onUpdateReason, isLoading,
   currentUserId, currentUserRole,
 }: DrawingTableProps) {
   const queryClient = useQueryClient()
@@ -236,7 +236,7 @@ export function DrawingTable({
           <button onClick={() => setUploadError(null)} className="ml-2 underline">dismiss</button>
         </div>
       )}
-      {!isLoading && drawings.length > 0 && <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1700 }}>
+      {!isLoading && drawings.length > 0 && <table className="w-full border-collapse text-[11px]" style={{ minWidth: 1850 }}>
         <thead>
           <tr>
             <th className="px-2 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap w-16">
@@ -247,12 +247,13 @@ export function DrawingTable({
             </th>
             {thc('approvalStatus', 'Approval')}
             {thc('approvalDate', 'Approval Date')}
-            {view === 'project' && (
-              <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
-                Designer
-              </th>
-            )}
-            {HEADERS.map(h => th(h.field, h.label, h.locked))}
+            {th('drawingNumber', 'Drawing no.')}
+            {th('drawingTitle', 'Project / title')}
+            {th('category', 'Cat.')}
+            <th className="px-2.5 py-2 text-left text-[10px] font-medium uppercase tracking-[0.3px] whitespace-nowrap bg-surface-2 text-text-2 border-b border-border-strong">
+              Designer
+            </th>
+            {HEADERS.slice(3).map(h => th(h.field, h.label, h.locked))}
             <th className="px-2.5 py-2 text-center text-[10px] font-medium uppercase tracking-[0.3px] bg-surface-2 text-text-2 border-b border-border-strong whitespace-nowrap">
               Complete
             </th>
@@ -320,7 +321,7 @@ export function DrawingTable({
                       >
                         📄
                       </a>
-                      {canAct && (
+                      {canAct && drawing.approvalStatus !== 'APPROVED' && (
                         <button
                           onClick={() => handleDeletePdf(drawing.id)}
                           className="w-5 h-5 flex items-center justify-center rounded text-text-3 hover:bg-danger-bg hover:text-danger-text transition-colors text-[10px]"
@@ -330,7 +331,7 @@ export function DrawingTable({
                         </button>
                       )}
                     </div>
-                  ) : canAct ? (
+                  ) : canAct && drawing.approvalStatus !== 'APPROVED' ? (
                     <button
                       onClick={() => {
                         uploadTargetId.current = drawing.id
@@ -358,6 +359,8 @@ export function DrawingTable({
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger-bg text-danger-text text-[10px] font-medium">
                       ✕ Rejected
                     </span>
+                  ) : canApprove && !drawing.pdfUrl ? (
+                    <span title="Designer must attach a PDF before approval" className="text-text-3 text-[10px] italic">No PDF</span>
                   ) : canApprove ? (
                     <div className="flex items-center justify-center gap-1">
                       <button
@@ -387,14 +390,6 @@ export function DrawingTable({
                     : <span className="text-text-3">—</span>}
                 </td>
 
-                {view === 'project' && (
-                  <td className="px-2.5 py-2 align-middle whitespace-nowrap">
-                    <div className="flex items-center gap-1.5">
-                      <Avatar initials={drawing.designer.initials} color={drawing.designer.avatarColor} size="sm" />
-                      <span className="text-text-2">{drawing.designer.fullName.split(' ')[0]}</span>
-                    </div>
-                  </td>
-                )}
                 <td className="px-2.5 py-2 align-middle font-medium whitespace-nowrap text-text">
                   {drawing.drawingNumber}
                 </td>
@@ -403,6 +398,12 @@ export function DrawingTable({
                   <div className="text-text-3 text-[11px] mt-0.5">{drawing.drawingTitle}</div>
                 </td>
                 <td className="px-2.5 py-2 align-middle">{categoryPill(drawing.category)}</td>
+                <td className="px-2.5 py-2 align-middle whitespace-nowrap">
+                  <div className="flex items-center gap-1.5">
+                    <Avatar initials={drawing.designer.initials} color={drawing.designer.avatarColor} size="sm" />
+                    <span className="text-text-2">{drawing.designer.fullName.split(' ')[0]}</span>
+                  </div>
+                </td>
                 <td className="px-2.5 py-2 align-middle text-text-2">{drawing.requestor.fullName.split(' ')[0]}</td>
                 <td className="px-2.5 py-2 align-middle bg-surface-2 text-text-2 whitespace-nowrap">
                   <span className="text-[9px] mr-1">🔒</span>{formatSGTShort(drawing.requestDate)}
@@ -428,6 +429,10 @@ export function DrawingTable({
                     <Button variant="ghost" size="sm" className="opacity-50 cursor-default" disabled>
                       ✓ Done
                     </Button>
+                  ) : canAct && !drawing.pdfUrl ? (
+                    <span title="Upload a PDF drawing first" className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] text-text-3 bg-surface-2 border border-border cursor-not-allowed">
+                      📎 PDF required
+                    </span>
                   ) : canAct ? (
                     <Button variant="success" size="sm" onClick={() => onComplete(drawing)}>
                       ✓ Complete
