@@ -1,11 +1,10 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { requireAuth, requireMinRole } from '../middleware/auth'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const ROLE_LEVELS = ['DRAFTER','SENIOR_DRAFTER','DESIGNER','SENIOR_DESIGNER','PROJECT_ENGINEER','QS_DEPARTMENT','ASSISTANT_DESIGN_MANAGER','DESIGN_MANAGER','PROJECT_MANAGER','DEPARTMENT_HEAD','COO','CEO','ADMIN']
 

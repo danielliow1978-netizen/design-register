@@ -1,5 +1,5 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import multer from 'multer'
@@ -26,7 +26,6 @@ const upload = multer({
 })
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // ── Shared drawing select (for consistent responses) ─────────────────────────
 const drawingSelect = {

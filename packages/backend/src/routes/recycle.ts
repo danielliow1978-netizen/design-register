@@ -1,11 +1,10 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { requireAuth, requireMinRole } from '../middleware/auth'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const drawingSelect = {
   id: true, drawingNumber: true, drawingTitle: true,

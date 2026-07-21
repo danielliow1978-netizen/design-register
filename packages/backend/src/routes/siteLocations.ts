@@ -1,10 +1,9 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // Managers and above may edit/delete any team member's entry (override).
 const MANAGER_ROLES = ['ASSISTANT_DESIGN_MANAGER', 'DESIGN_MANAGER', 'PROJECT_MANAGER', 'DEPARTMENT_HEAD', 'COO', 'CEO', 'ADMIN']

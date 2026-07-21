@@ -1,10 +1,9 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { requireAuth } from '../middleware/auth'
 import { subWeeks, startOfWeek, endOfWeek, format } from 'date-fns'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // GET /api/dashboard/team
 router.get('/team', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

@@ -1,9 +1,8 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { requireAuth, requireMinRole } from '../middleware/auth'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 // GET /api/audit — any authenticated user, read-only
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

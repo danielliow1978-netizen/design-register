@@ -1,8 +1,7 @@
+import { prisma } from '../lib/prisma'
 import cron from 'node-cron'
-import { PrismaClient } from '@prisma/client'
 import { sendDailyDigest, sendWeeklyDigest } from './emailService'
 
-const prisma = new PrismaClient()
 
 async function updateDrawingStatuses(): Promise<void> {
   const now = new Date()

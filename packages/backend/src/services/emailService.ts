@@ -1,11 +1,10 @@
+import { prisma } from '../lib/prisma'
 import { Resend } from 'resend'
-import { PrismaClient } from '@prisma/client'
 import fs from 'fs'
 import path from 'path'
 import { format, addDays } from 'date-fns'
 import { toZonedTime } from 'date-fns-tz'
 
-const prisma = new PrismaClient()
 
 function getResend(): Resend | null {
   const apiKey = process.env.RESEND_API_KEY

@@ -1,10 +1,9 @@
+import { prisma } from '../lib/prisma'
 import { Router, Request, Response, NextFunction } from 'express'
-import { PrismaClient } from '@prisma/client'
 import { z } from 'zod'
 import { requireAuth } from '../middleware/auth'
 
 const router = Router()
-const prisma = new PrismaClient()
 
 const upsertDraftSchema = z.object({
   id: z.string().optional(),        // if provided, update that draft
