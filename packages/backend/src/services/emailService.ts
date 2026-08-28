@@ -290,35 +290,38 @@ export async function sendApprovalEmail(params: ApprovalEmailParams): Promise<vo
     APPROVAL_DATE: formattedDate,
   }
 
+  // Resend's free tier rate-limits at ~2 req/sec; retry once on failure so a
+  // transient 429 doesn't silently drop a notification.
+  async function sendWithRetry(to: string | string[], html: string, label: string) {
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        await resend!.emails.send({ from: getFromAddress(), to, subject, html })
+        console.log(`[email] Approval notification sent to ${label}`)
+        return
+      } catch (err) {
+        if (attempt === 2) console.error(`[email] Failed to send to ${label} after retry:`, err)
+        else await new Promise(r => setTimeout(r, 600))
+      }
+    }
+  }
+
   // Send 1 personalised email to the designer
   const designerFirstName = designerName.split(' ')[0] || designerName || 'there'
-  try {
-    await resend.emails.send({
-      from: getFromAddress(),
-      to: designerEmail,
-      subject,
-      html: replace(template, { RECIPIENT_NAME: escapeHtml(designerFirstName), ...commonTokens }),
-    })
-    console.log(`[email] Approval notification sent to designer ${designerEmail}`)
-  } catch (err) {
-    console.error('[email] Failed to send to designer:', err)
-  }
+  await sendWithRetry(
+    designerEmail,
+    replace(template, { RECIPIENT_NAME: escapeHtml(designerFirstName), ...commonTokens }),
+    `designer ${designerEmail}`
+  )
 
   // Send 1 batch email to approver + all CC managers/admins (exclude designer to avoid duplicate)
   const otherEmails = [approverEmail, ...ccRecipients.map(r => r.email)]
     .filter((e, i, arr) => arr.indexOf(e) === i && e !== designerEmail)
 
   if (otherEmails.length > 0) {
-    try {
-      await resend.emails.send({
-        from: getFromAddress(),
-        to: otherEmails,
-        subject,
-        html: replace(template, { RECIPIENT_NAME: 'Design Team', ...commonTokens }),
-      })
-      console.log(`[email] Approval notification sent to ${otherEmails.length} others: ${otherEmails.join(', ')}`)
-    } catch (err) {
-      console.error('[email] Failed to send batch notification:', err)
-    }
+    await sendWithRetry(
+      otherEmails,
+      replace(template, { RECIPIENT_NAME: 'Design Team', ...commonTokens }),
+      `${otherEmails.length} others: ${otherEmails.join(', ')}`
+    )
   }
 }
